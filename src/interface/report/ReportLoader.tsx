@@ -1,5 +1,4 @@
 import { captureException } from 'common/errorLogger';
-import { fetchFights } from 'common/fetchWclApi';
 import ActivityIndicator from 'interface/ActivityIndicator';
 import makeAnalyzerUrl from 'interface/makeAnalyzerUrl';
 import Report from 'parser/core/Report';
@@ -12,6 +11,17 @@ import DocumentTitle from 'interface/DocumentTitle';
 import handleApiError, { isCommonError } from './handleApiError';
 import { clearReport, setReport as setNavigationReport } from 'interface/reducers/navigation';
 import { useLingui } from '@lingui/react';
+import { LocalCombatLogDataSource } from 'local/LocalCombatLogDataSource';
+import { WarcraftLogsDataSource } from 'local/WarcraftLogsDataSource';
+import type { AnalysisDataSource } from 'local/AnalysisDataSource';
+import { createContext, useContext } from 'react';
+
+export const AnalysisDataSourceContext = createContext<AnalysisDataSource | undefined>(undefined);
+export const useAnalysisDataSource = () => {
+  const source = useContext(AnalysisDataSourceContext);
+  if (!source) throw new Error('Unable to get analysis data source');
+  return source;
+};
 
 const pageWasReloaded = () =>
   performance
@@ -87,7 +97,7 @@ interface Props {
 }
 const ReportLoader = ({ children }: Props) => {
   const navigate = useNavigate();
-  const { reportCode, fightId } = useParams();
+  const { reportCode, localReportId, fightId } = useParams();
   const dispatch = useDispatch();
   const [error, setError] = useState<Error | null>(null);
   const [report, setReport] = useState<Report | null>(null);
@@ -123,14 +133,18 @@ const ReportLoader = ({ children }: Props) => {
       const isAnonymous = code.startsWith('a:');
       try {
         resetState();
-        const report = await fetchFights(code, refresh);
-        if (reportCode !== code) {
+        const source = localReportId
+          ? new LocalCombatLogDataSource({ kind: 'local', id: localReportId })
+          : new WarcraftLogsDataSource({ kind: 'warcraft-logs', code, isAnonymous });
+        const report = await source.loadReport({ refresh });
+        if ((localReportId && localReportId !== code) || (!localReportId && reportCode !== code)) {
           return; // the user switched report already
         }
         updateState(null, {
           ...report,
           isAnonymous,
-          code: reportCode, // Pass the code so know which report this is
+          code: reportCode ?? localReportId!, // compatibility for existing analysis modules
+          locator: source.locator,
           // TODO: Remove the code prop
         });
         // We need to set the report in the global state so the NavigationBar, which is not a child of this component, can also use it
@@ -141,19 +155,19 @@ const ReportLoader = ({ children }: Props) => {
         updateState(err as Error, null);
       }
     },
-    [reportCode, resetState, updateState],
+    [localReportId, reportCode, resetState, updateState],
   );
 
   const handleRefresh = useCallback(() => {
-    if (reportCode) {
+    if (reportCode || localReportId) {
       // noinspection JSIgnoredPromiseFromCall
-      loadReport(reportCode, true);
+      loadReport(reportCode ?? localReportId!, true);
     }
-  }, [loadReport, reportCode]);
+  }, [loadReport, reportCode, localReportId]);
 
   useEffect(() => {
     const fightIdAsNumber = fightId ? Number(fightId) : null;
-    if (reportCode) {
+    if (reportCode || localReportId) {
       const refresh = shouldForceRefresh(
         fightIdAsNumber,
         lastForceRefreshTimestamp ? Number(lastForceRefreshTimestamp) : 0,
@@ -163,11 +177,11 @@ const ReportLoader = ({ children }: Props) => {
       }
 
       // noinspection JSIgnoredPromiseFromCall
-      loadReport(reportCode, refresh);
+      loadReport(reportCode ?? localReportId!, refresh);
     }
     // intentionally omit refresh-related state from this effect's deps to avoid triggering another load after a force refresh
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadReport, reportCode]);
+  }, [loadReport, reportCode, localReportId]);
 
   if (error) {
     return handleApiError(error, () => {
@@ -190,9 +204,21 @@ const ReportLoader = ({ children }: Props) => {
     <>
       <DocumentTitle title={report.title} />
 
-      <ReportProvider report={report} refreshReport={handleRefresh}>
-        {children}
-      </ReportProvider>
+      <AnalysisDataSourceContext.Provider
+        value={
+          report.locator?.kind === 'local'
+            ? new LocalCombatLogDataSource(report.locator)
+            : new WarcraftLogsDataSource({
+                kind: 'warcraft-logs',
+                code: report.code,
+                isAnonymous: report.isAnonymous,
+              })
+        }
+      >
+        <ReportProvider report={report} refreshReport={handleRefresh}>
+          {children}
+        </ReportProvider>
+      </AnalysisDataSourceContext.Provider>
     </>
   );
 };

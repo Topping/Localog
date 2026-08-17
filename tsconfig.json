@@ -33,7 +33,9 @@
       "CONTRIBUTORS": ["./src/CONTRIBUTORS"],
       "mergeAllChangelogs": ["./src/mergeAllChangelogs"],
       "Root": ["./src/Root"],
-      "store": ["./src/store"]
+      "store": ["./src/store"],
+      "local/*": ["./src/local/*"],
+      "local": ["./src/local"]
     },
     "noFallthroughCasesInSwitch": true
   },

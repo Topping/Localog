@@ -1,6 +1,5 @@
-import { WCLEventsResponse } from 'common/WCL_TYPES';
 import { captureException } from 'common/errorLogger';
-import fetchWcl from 'common/fetchWclApi';
+import { useAnalysisDataSource } from '../ReportLoader';
 import { AnyEvent } from 'parser/core/Events';
 import { WCLFight } from 'parser/core/Fight';
 import { PlayerInfo } from 'parser/core/Player';
@@ -20,6 +19,7 @@ const useEvents = ({
   const [events, setEvents] = useState<AnyEvent[] | null>(null);
   const [currentTime, setCurrentTime] = useState<number>(fight.start_time);
   const [error, setError] = useState<Error | null>(null);
+  const dataSource = useAnalysisDataSource();
 
   const updateState = (error: Error | null, events: AnyEvent[] | null) => {
     setError(error);
@@ -28,30 +28,19 @@ const useEvents = ({
 
   useEffect(() => {
     let cancelled = false;
-    // we are using the raw `fetchWcl` here for greater control
-    const loadPage = (startTime: number) =>
-      fetchWcl<WCLEventsResponse>(`report/events/${report.code}`, {
-        start: startTime,
-        end: fight.end_time,
-        actorid: player.id,
-        translate: true,
-      });
-
     const load = async (startTime: number): Promise<AnyEvent[]> => {
       if (cancelled) {
         return [];
       }
 
-      const { events, nextPageTimestamp } = await loadPage(startTime);
-
-      if (!nextPageTimestamp) {
-        setCurrentTime(fight.end_time);
-        return events;
-      } else {
-        setCurrentTime(nextPageTimestamp);
-
-        return events.concat(await load(nextPageTimestamp));
-      }
+      const events = await dataSource.loadEvents({
+        fightId: fight.id,
+        start: startTime,
+        end: fight.end_time,
+        actorId: player.id,
+      });
+      setCurrentTime(fight.end_time);
+      return events;
     };
 
     (async () => {
@@ -69,7 +58,7 @@ const useEvents = ({
     return () => {
       cancelled = true;
     };
-  }, [report, fight, player]);
+  }, [report, fight, player, dataSource]);
 
   return { events, currentTime, error };
 };

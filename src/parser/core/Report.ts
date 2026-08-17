@@ -2,6 +2,7 @@ import { EnemyInfo } from './Enemy';
 import { WCLFight } from './Fight';
 import { PetInfo } from './Pet';
 import { PlayerInfo } from './Player';
+import type { ReportLocator } from 'local/ReportLocator';
 
 interface ExportedCharacter {
   id: number;
@@ -44,6 +45,8 @@ interface WCLReportPhases {
 export interface Report extends WCLReport {
   code: string;
   isAnonymous: boolean;
+  /** Source identity. Kept optional for compatibility with parser fixtures. */
+  locator?: ReportLocator;
 }
 
 export default Report;

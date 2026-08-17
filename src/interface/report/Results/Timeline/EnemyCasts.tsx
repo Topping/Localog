@@ -15,6 +15,7 @@ import './Casts.scss';
 import * as React from 'react';
 import Toggle from 'interface/react-toggle';
 import { fetchEvents } from 'common/fetchWclApi';
+import { useAnalysisDataSource } from 'interface/report/ReportLoader';
 import { useCombatLogParser } from 'interface/report/CombatLogParserContext';
 import TimeIndicators from './TimeIndicators';
 import ActivityIndicator from 'interface/ActivityIndicator';
@@ -237,6 +238,7 @@ export const EnemyCastsTimeline = ({
 }: TimelineProps) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const { combatLogParser: parser } = useCombatLogParser();
+  const dataSource = useAnalysisDataSource();
   const [shouldRenderNPCSpells, setShouldRenderNPCSpells] = useState<boolean>(false);
   const [NPCCasts, setNPCCasts] = useState<(NpcBeginCastEvent | NpcCastEvent)[]>([]);
 
@@ -273,7 +275,7 @@ export const EnemyCastsTimeline = ({
 
   useEffect(() => {
     const fetchData = async () => {
-      if (hasUserRequestedNPCSpells) {
+      if (hasUserRequestedNPCSpells && dataSource.capabilities.externalWclLinks) {
         try {
           //This call grabs the abilities cast by NPCs
           const events = (await fetchEvents(
@@ -399,6 +401,7 @@ export const EnemyCastsTimeline = ({
     fetchData();
   }, [
     parser.report.code,
+    dataSource,
     parser.fight.start_time,
     parser.fight.end_time,
     parser.report.enemies,

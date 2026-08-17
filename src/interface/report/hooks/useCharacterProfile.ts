@@ -4,16 +4,23 @@ import { PlayerDetails } from 'parser/core/Player';
 import Report from 'parser/core/Report';
 import { useEffect, useState } from 'react';
 import { wclGameVersionToBranch } from 'game/VERSIONS';
+import { useAnalysisDataSource } from '../ReportLoader';
 
 const CHINESE_REGION = 'cn';
 
 const useCharacterProfile = ({ report, player }: { report: Report; player: PlayerDetails }) => {
   const [characterProfile, setCharacterProfile] = useState<CharacterProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const dataSource = useAnalysisDataSource();
 
   useEffect(() => {
     (async () => {
       setIsLoading(true);
+      if (!dataSource.capabilities.characterProfiles) {
+        setCharacterProfile(null);
+        setIsLoading(false);
+        return;
+      }
       const id = player.guid;
       // TODO: Since the player selection loads this data now too, store it in Redux and use a cached version if available.
       const classic = wclGameVersionToBranch(report.gameVersion) === 'classic';
@@ -46,7 +53,7 @@ const useCharacterProfile = ({ report, player }: { report: Report; player: Playe
         setIsLoading(false);
       }
     })();
-  }, [report, player]);
+  }, [report, player, dataSource]);
 
   return { characterProfile, isLoading };
 };
