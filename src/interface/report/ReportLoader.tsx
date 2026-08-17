@@ -2,7 +2,7 @@ import { captureException } from 'common/errorLogger';
 import ActivityIndicator from 'interface/ActivityIndicator';
 import makeAnalyzerUrl from 'interface/makeAnalyzerUrl';
 import Report from 'parser/core/Report';
-import { ReactNode, useCallback, useEffect, useState } from 'react';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ReportProvider } from 'interface/report/context/ReportContext';
@@ -11,17 +11,16 @@ import DocumentTitle from 'interface/DocumentTitle';
 import handleApiError, { isCommonError } from './handleApiError';
 import { clearReport, setReport as setNavigationReport } from 'interface/reducers/navigation';
 import { useLingui } from '@lingui/react';
-import { LocalCombatLogDataSource } from 'local/LocalCombatLogDataSource';
-import { WarcraftLogsDataSource } from 'local/WarcraftLogsDataSource';
-import type { AnalysisDataSource } from 'local/AnalysisDataSource';
-import { createContext, useContext } from 'react';
-
-export const AnalysisDataSourceContext = createContext<AnalysisDataSource | undefined>(undefined);
-export const useAnalysisDataSource = () => {
-  const source = useContext(AnalysisDataSourceContext);
-  if (!source) throw new Error('Unable to get analysis data source');
-  return source;
-};
+import { recoverLocalReports } from 'local/localReportStore';
+import {
+  LocalReportQuotaError,
+  LocalReportStorageError,
+  LocalReportUnavailableError,
+} from 'local/localReportStore';
+import { AnalysisDataSourceContext } from 'report-data/AnalysisDataSourceContext';
+import type { AnalysisDataSource } from 'report-data/AnalysisDataSource';
+import { createAnalysisDataSource } from './createAnalysisDataSource';
+import FullscreenError from 'interface/FullscreenError';
 
 const pageWasReloaded = () =>
   performance
@@ -102,6 +101,10 @@ const ReportLoader = ({ children }: Props) => {
   const [error, setError] = useState<Error | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const { i18n } = useLingui();
+  // One source instance per route keeps caches, cancellation and capability decisions stable for children.
+  const dataSource = useMemo<AnalysisDataSource | null>(() => {
+    return createAnalysisDataSource({ localReportId, reportCode });
+  }, [localReportId, reportCode]);
 
   const [lastForceRefreshTimestamp, setForceRefreshTimestamp] = useSessionState(
     'report:last-force-refresh',
@@ -133,9 +136,11 @@ const ReportLoader = ({ children }: Props) => {
       const isAnonymous = code.startsWith('a:');
       try {
         resetState();
-        const source = localReportId
-          ? new LocalCombatLogDataSource({ kind: 'local', id: localReportId })
-          : new WarcraftLogsDataSource({ kind: 'warcraft-logs', code, isAnonymous });
+        const source = dataSource;
+        if (!source) return;
+        if (source.locator.kind === 'local') {
+          await recoverLocalReports();
+        }
         const report = await source.loadReport({ refresh });
         if ((localReportId && localReportId !== code) || (!localReportId && reportCode !== code)) {
           return; // the user switched report already
@@ -155,22 +160,25 @@ const ReportLoader = ({ children }: Props) => {
         updateState(err as Error, null);
       }
     },
-    [localReportId, reportCode, resetState, updateState],
+    [dataSource, localReportId, reportCode, resetState, updateState],
   );
 
   const handleRefresh = useCallback(() => {
-    if (reportCode || localReportId) {
+    if (dataSource?.refreshReport && reportCode) {
       // noinspection JSIgnoredPromiseFromCall
-      loadReport(reportCode ?? localReportId!, true);
+      loadReport(reportCode, true);
     }
-  }, [loadReport, reportCode, localReportId]);
+  }, [dataSource, loadReport, reportCode]);
 
   useEffect(() => {
     const fightIdAsNumber = fightId ? Number(fightId) : null;
     if (reportCode || localReportId) {
-      const refresh = shouldForceRefresh(
-        fightIdAsNumber,
-        lastForceRefreshTimestamp ? Number(lastForceRefreshTimestamp) : 0,
+      const refresh = Boolean(
+        reportCode &&
+        shouldForceRefresh(
+          fightIdAsNumber,
+          lastForceRefreshTimestamp ? Number(lastForceRefreshTimestamp) : 0,
+        ),
       );
       if (refresh) {
         setForceRefreshTimestamp(String(Date.now()));
@@ -184,6 +192,28 @@ const ReportLoader = ({ children }: Props) => {
   }, [loadReport, reportCode, localReportId]);
 
   if (error) {
+    if (
+      localReportId ||
+      error instanceof LocalReportUnavailableError ||
+      error instanceof LocalReportQuotaError ||
+      error instanceof LocalReportStorageError
+    ) {
+      return (
+        <FullscreenError
+          error="Local report unavailable"
+          details={error.message || 'The imported combat log could not be opened.'}
+          background="https://media.giphy.com/media/m4TbeLYX5MaZy/giphy.gif"
+        >
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => navigate('/local-import')}
+          >
+            Return to local imports
+          </button>
+        </FullscreenError>
+      );
+    }
     return handleApiError(error, () => {
       resetState();
       navigate(makeAnalyzerUrl());
@@ -204,17 +234,7 @@ const ReportLoader = ({ children }: Props) => {
     <>
       <DocumentTitle title={report.title} />
 
-      <AnalysisDataSourceContext.Provider
-        value={
-          report.locator?.kind === 'local'
-            ? new LocalCombatLogDataSource(report.locator)
-            : new WarcraftLogsDataSource({
-                kind: 'warcraft-logs',
-                code: report.code,
-                isAnonymous: report.isAnonymous,
-              })
-        }
-      >
+      <AnalysisDataSourceContext.Provider value={dataSource!}>
         <ReportProvider report={report} refreshReport={handleRefresh}>
           {children}
         </ReportProvider>

@@ -35,7 +35,9 @@
       "Root": ["./src/Root"],
       "store": ["./src/store"],
       "local/*": ["./src/local/*"],
-      "local": ["./src/local"]
+      "local": ["./src/local"],
+      "report-data/*": ["./src/report-data/*"],
+      "report-data": ["./src/report-data"]
     },
     "noFallthroughCasesInSwitch": true
   },

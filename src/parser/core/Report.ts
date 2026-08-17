@@ -2,7 +2,11 @@ import { EnemyInfo } from './Enemy';
 import { WCLFight } from './Fight';
 import { PetInfo } from './Pet';
 import { PlayerInfo } from './Player';
-import type { ReportLocator } from 'local/ReportLocator';
+
+/** Identifies the backing source without coupling parser domain types to an adapter. */
+export type ReportSource =
+  | { kind: 'warcraft-logs'; code: string; isAnonymous: boolean }
+  | { kind: 'local'; id: string };
 
 interface ExportedCharacter {
   id: number;
@@ -46,7 +50,7 @@ export interface Report extends WCLReport {
   code: string;
   isAnonymous: boolean;
   /** Source identity. Kept optional for compatibility with parser fixtures. */
-  locator?: ReportLocator;
+  locator?: ReportSource;
 }
 
 export default Report;

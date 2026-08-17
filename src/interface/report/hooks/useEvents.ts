@@ -1,5 +1,5 @@
 import { captureException } from 'common/errorLogger';
-import { useAnalysisDataSource } from '../ReportLoader';
+import { useAnalysisDataSource } from 'report-data/AnalysisDataSourceContext';
 import { AnyEvent } from 'parser/core/Events';
 import { WCLFight } from 'parser/core/Fight';
 import { PlayerInfo } from 'parser/core/Player';
@@ -28,6 +28,7 @@ const useEvents = ({
 
   useEffect(() => {
     let cancelled = false;
+    const controller = new AbortController();
     const load = async (startTime: number): Promise<AnyEvent[]> => {
       if (cancelled) {
         return [];
@@ -38,6 +39,12 @@ const useEvents = ({
         start: startTime,
         end: fight.end_time,
         actorId: player.id,
+        signal: controller.signal,
+        onProgress: (progress) => {
+          if (!cancelled) {
+            setCurrentTime(fight.start_time + (fight.end_time - fight.start_time) * progress);
+          }
+        },
       });
       setCurrentTime(fight.end_time);
       return events;
@@ -57,6 +64,7 @@ const useEvents = ({
 
     return () => {
       cancelled = true;
+      controller.abort();
     };
   }, [report, fight, player, dataSource]);
 

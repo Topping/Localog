@@ -9,7 +9,7 @@ import Report from 'parser/core/Report';
 import { useEffect, useMemo, useState } from 'react';
 
 import BossPhasesState from '../BOSS_PHASES_STATE';
-import { useAnalysisDataSource } from '../ReportLoader';
+import { useAnalysisDataSource } from 'report-data/AnalysisDataSourceContext';
 
 const buildWclPhaseConfigs = (
   report: Report,
@@ -107,14 +107,14 @@ const useBossPhaseEvents = ({ report, fight }: { report: Report; fight: WCLFight
     }
 
     const loadEvents = async () => {
-      if (!dataSource.capabilities.aggregateTables) return null;
       const filter = makeWclBossPhaseFilter(fight);
 
-      if (filter) {
-        const events = await dataSource.loadEvents({
+      if (filter && dataSource.loadFilteredEvents) {
+        const events = await dataSource.loadFilteredEvents({
           fightId: fight.id,
           start: fight.start_time,
           end: fight.end_time,
+          filter,
         });
         return fabricateBossPhaseEvents(events, report, fight);
       } else {

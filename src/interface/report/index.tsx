@@ -34,7 +34,7 @@ import { EventType, type CombatantInfoEvent } from 'parser/core/Events';
 import { wclGameVersionToBranch } from 'game/VERSIONS';
 import GameBranch from 'game/GameBranch';
 import { normalizedEncounterId } from 'game/raids';
-import { useAnalysisDataSource } from './ReportLoader';
+import { useAnalysisDataSource } from 'report-data/AnalysisDataSourceContext';
 
 const UnsupportedSpecBouncer = ({ report, fight }: { report: Report; fight: WCLFight }) => (
   <main className="container offset">

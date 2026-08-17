@@ -1,6 +1,8 @@
 import { DragEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { importLocalCombatLog, type ImportProgress } from 'local/LocalReportImport';
+import { recoverLocalReports } from 'local/localReportStore';
+import LocalReportManager from './LocalReportManager';
 
 export default function LocalReportSelector() {
   const input = useRef<HTMLInputElement>(null);
@@ -14,8 +16,9 @@ export default function LocalReportSelector() {
     const controller = new AbortController();
     abortController.current = controller;
     setError('');
-    setProgress({ phase: 'reading', progress: 0 });
+    setProgress({ phase: 'discovering', progress: 0 });
     try {
+      await recoverLocalReports();
       const id = await importLocalCombatLog(file, setProgress, controller.signal);
       navigate(`/local/${id}`);
     } catch (reason) {
@@ -27,6 +30,7 @@ export default function LocalReportSelector() {
       setProgress(null);
     } finally {
       abortController.current = null;
+      if (input.current) input.current.value = '';
     }
   };
 
@@ -67,7 +71,12 @@ export default function LocalReportSelector() {
         <div role="status" style={{ marginTop: 10 }}>
           <progress value={progress.progress} max={1} style={{ width: '100%' }} />
           <span>
-            {progress.phase} ({Math.round(progress.progress * 100)}%)
+            {progress.phase === 'discovering'
+              ? 'Discovering encounters'
+              : progress.phase === 'normalizing'
+                ? 'Normalizing events'
+                : 'Saving'}{' '}
+            ({Math.round(progress.progress * 100)}%)
           </span>{' '}
           <button
             className="btn btn-link"
@@ -83,6 +92,7 @@ export default function LocalReportSelector() {
           {error}
         </div>
       )}
+      <LocalReportManager />
     </div>
   );
 }
