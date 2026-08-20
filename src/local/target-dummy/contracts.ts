@@ -1,4 +1,5 @@
-import type { LocalCombatLogDiscovery, LocalDiagnostic } from '../LocalCombatLogParser';
+import type { LocalActor, LocalCombatLogDiscovery, LocalDiagnostic } from '../LocalCombatLogParser';
+import type { TargetDummyBuildBinding } from './combatant-info/validator';
 
 export type TargetDummyActorKind =
   | 'player'
@@ -112,6 +113,9 @@ export type TargetDummyDiscoveryRoute =
       readonly type: 'target-dummy-input-required';
       readonly discovery: TargetDummyActorDiscoveryResult;
       readonly diagnostics: readonly LocalDiagnostic[];
+      /** Worker-only state retained across the preparation pause. */
+      readonly localActors: readonly LocalActor[];
+      readonly build: TargetDummyBuildBinding;
     }
   | {
       readonly type: 'unsupported-input';

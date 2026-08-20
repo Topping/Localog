@@ -81,6 +81,7 @@ describe('target-dummy discovery router', () => {
       retainedRawLineCount: 0,
       retainedNormalizedEventCount: 0,
     });
+    expect(result.build).toEqual({ gameVersion: 1, logVersion: 22, wowVersion: '12.1.0' });
   });
 
   it('gives a usable genuine encounter precedence over standalone dummy activity', () => {

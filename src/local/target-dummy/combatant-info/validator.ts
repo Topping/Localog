@@ -21,6 +21,7 @@ export interface TargetDummyPlayerBinding {
 export interface TargetDummyBuildBinding {
   readonly gameVersion: number;
   readonly logVersion: number;
+  readonly wowVersion?: string;
 }
 
 export interface ValidatedCombatantInfoProfile {
@@ -123,6 +124,7 @@ export function validateCombatantInfoProfile(
   if (
     build.gameVersion !== TARGET_DUMMY_GAME_VERSION ||
     build.logVersion !== TARGET_DUMMY_LOG_VERSION ||
+    (build.wowVersion !== undefined && build.wowVersion !== TARGET_DUMMY_WOW_VERSION) ||
     profile.provenance.wowVersion !== TARGET_DUMMY_WOW_VERSION
   ) {
     return failure(

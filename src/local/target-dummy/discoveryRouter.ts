@@ -21,9 +21,13 @@ export class TargetDummyDiscoveryRouter {
   #activeEncounter: ActiveEncounterEnvelope | undefined;
   #hasUsableEncounter = false;
   #lastLine = 0;
+  #wowVersion: string | undefined;
 
   consume(fields: string[], line: number): void {
     this.#lastLine = line;
+    if ((fields[0] === 'COMBAT_LOG_VERSION' ? fields[0] : fields[1]) === 'COMBAT_LOG_VERSION') {
+      this.#wowVersion = fields.find((value) => /^\d+\.\d+\.\d+$/u.test(value));
+    }
     this.#targetDummyDiscovery.consume(fields);
     this.#observeEncounterEnvelope(fields);
     this.#encounterDiscovery.line(fields, line);
@@ -42,6 +46,12 @@ export class TargetDummyDiscoveryRouter {
         type: 'target-dummy-input-required',
         discovery: targetDummyDiscovery,
         diagnostics: this.#encounterDiscovery.diagnostics,
+        localActors: [...this.#encounterDiscovery.actors.values()],
+        build: {
+          gameVersion: 1,
+          logVersion: 22,
+          ...(this.#wowVersion === undefined ? {} : { wowVersion: this.#wowVersion }),
+        },
       };
     }
     return {
