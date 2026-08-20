@@ -45,7 +45,9 @@ export type SimcProfileFailureCode =
   | 'SIMC_PROFILE_MALFORMED'
   | 'SIMC_PROFILE_NOT_ADDON_EXPORT'
   | 'SIMC_MULTIPLE_ACTIVE_CHARACTERS'
-  | 'SIMC_MISSING_REQUIRED_FIELD';
+  | 'SIMC_MISSING_REQUIRED_FIELD'
+  | 'SIMC_UNSUPPORTED_TALENT_SERIALIZATION'
+  | 'SIMC_TALENT_TREE_HASH_MISMATCH';
 
 export interface SimcProfileFailure {
   readonly code: SimcProfileFailureCode;
