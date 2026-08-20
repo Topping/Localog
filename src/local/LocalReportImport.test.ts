@@ -255,4 +255,82 @@ describe('importLocalCombatLog', () => {
     controller.abort();
     await expect(importing).rejects.toMatchObject({ name: 'AbortError' });
   });
+
+  it('ignores stale batches and completion while normalization is active', async () => {
+    const controller = new AbortController();
+    const importing = importLocalCombatLog(
+      new File(['log'], 'combat.txt'),
+      undefined,
+      controller.signal,
+    );
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+    const worker = FakeWorker.instances[0];
+
+    await worker.emit(
+      operation({
+        type: 'discovered',
+        importKind: 'encounter-log',
+        report,
+        actors,
+        diagnostics: [],
+      }),
+    );
+    await worker.emit({
+      operationId: 'stale-id',
+      type: 'batch',
+      batchId: 0,
+      fightId: 1,
+      events: [{ type: 'cast', timestamp: 10 }],
+    });
+    await worker.emit({ operationId: 'stale-id', type: 'complete', diagnostics: [] });
+
+    expect(store.appendLocalEventChunk).not.toHaveBeenCalled();
+    expect(store.updateLocalManifest.mock.calls.map((call) => call[1].status)).toEqual([
+      'discovering',
+      'normalizing',
+    ]);
+    expect(worker.terminate).not.toHaveBeenCalled();
+
+    controller.abort();
+    await expect(importing).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
+  it('cancels a resumed target-dummy import during normalization and ignores late completion', async () => {
+    const controller = new AbortController();
+    const provideInput = vi.fn().mockResolvedValue({
+      playerGuid: 'Player-1',
+      sessionId: 'session-1',
+      simcProfile: '# SimC Addon profile',
+    });
+    const importing = importLocalCombatLog(
+      new File(['log'], 'combat.txt'),
+      undefined,
+      controller.signal,
+      provideInput,
+    );
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+    const worker = FakeWorker.instances[0];
+    const request = { discovery: { players: [], sessions: [] }, diagnostics: [] };
+
+    await worker.emit(operation({ type: 'target-dummy-input-required', requestId: 1, request }));
+    await worker.emit(
+      operation({
+        type: 'discovered',
+        importKind: 'target-dummy',
+        report,
+        actors,
+        diagnostics: [],
+      }),
+    );
+    controller.abort();
+    await expect(importing).rejects.toMatchObject({ name: 'AbortError' });
+    await worker.emit(operation({ type: 'complete', diagnostics: [] }));
+
+    expect(store.updateLocalManifest.mock.calls.map((call) => call[1].status)).toEqual([
+      'discovering',
+      'normalizing',
+    ]);
+    expect(store.removeLocalReport).toHaveBeenCalledWith('local-id');
+    expect(worker.terminate).toHaveBeenCalledOnce();
+  });
 });
