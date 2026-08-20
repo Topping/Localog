@@ -9,6 +9,7 @@ interface Props {
   request: TargetDummyInputRequest;
   disabled: boolean;
   onSubmit: (input: TargetDummyPreparationInput) => void;
+  onStartOver?: () => void;
 }
 
 const actorName = (request: TargetDummyInputRequest, guid: string) =>
@@ -25,7 +26,12 @@ const formatAttemptTime = (timestamp: number) =>
     second: '2-digit',
   });
 
-export default function TargetDummyImportInput({ request, disabled, onSubmit }: Props) {
+export default function TargetDummyImportInput({
+  request,
+  disabled,
+  onSubmit,
+  onStartOver,
+}: Props) {
   const [playerGuid, setPlayerGuid] = useState(() => initialPlayerGuid(request));
   const [sessionId, setSessionId] = useState('');
   const [simcProfile, setSimcProfile] = useState('');
@@ -152,9 +158,36 @@ export default function TargetDummyImportInput({ request, disabled, onSubmit }: 
           pull-time auras are unavailable and will use explicit defaults.
         </small>
       </p>
+      <details style={{ marginBottom: 15 }}>
+        <summary>Technical discovery details</summary>
+        <p>
+          <small>
+            Scanned {request.discovery.recordsScanned} records and retained{' '}
+            {request.discovery.retainedState.actorCount} actors and{' '}
+            {request.discovery.retainedState.candidateWindowCount} attempt windows without retaining
+            raw lines or normalized events.
+          </small>
+        </p>
+        <ul>
+          {request.discovery.players.map((player) => (
+            <li key={player.guid}>
+              {player.name ?? 'Unnamed player'} — {player.guid}; activity score{' '}
+              {player.activityScore}
+            </li>
+          ))}
+          {request.diagnostics.map((diagnostic, index) => (
+            <li key={`${diagnostic.line}:${index}`}>{diagnostic.message}</li>
+          ))}
+        </ul>
+      </details>
       <button className="btn btn-primary" type="submit" disabled={disabled}>
         {disabled ? 'Validating…' : 'Import selected attempt'}
       </button>
+      {onStartOver && (
+        <button className="btn btn-link" type="button" disabled={disabled} onClick={onStartOver}>
+          Start over
+        </button>
+      )}
     </form>
   );
 }

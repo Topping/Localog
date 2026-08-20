@@ -173,4 +173,25 @@ describe('TargetDummyImportInput', () => {
       expect.objectContaining({ sessionId: 'ada-attempt', factionChoice: 2 }),
     );
   });
+
+  it('keeps GUIDs and discovery diagnostics behind an optional disclosure', () => {
+    const onStartOver = vi.fn();
+    render(
+      <TargetDummyImportInput
+        request={{
+          ...request,
+          diagnostics: [{ line: 7, severity: 'warning', message: 'Nearby activity was ignored.' }],
+        }}
+        disabled={false}
+        onSubmit={vi.fn()}
+        onStartOver={onStartOver}
+      />,
+    );
+
+    expect(screen.getByText('Technical discovery details')).toBeInTheDocument();
+    expect(screen.getByText(/Player-1; activity score 8/)).toBeInTheDocument();
+    expect(screen.getByText('Nearby activity was ignored.')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Start over' }));
+    expect(onStartOver).toHaveBeenCalledOnce();
+  });
 });
