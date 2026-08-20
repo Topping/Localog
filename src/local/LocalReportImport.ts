@@ -150,6 +150,7 @@ export async function importLocalCombatLog(
             case 'discovered':
               await updateLocalManifest(id, {
                 status: 'normalizing',
+                importKind: data.importKind,
                 report: data.report,
                 players: players(data.report, data.actors),
                 diagnostics: data.diagnostics,

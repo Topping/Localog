@@ -8,6 +8,10 @@ import type {
 import type { TargetDummyDiscoveryRoute } from './target-dummy/contracts';
 import { routeLocalCombatLogDiscovery } from './target-dummy/discoveryRouter';
 import { prepareTargetDummyInput } from './target-dummy/preparation';
+import {
+  normalizePreparedTargetDummyImport,
+  prepareTargetDummyImport,
+} from './target-dummy/prepareImport';
 
 interface PausedTargetDummyOperation {
   readonly operationId: string;
@@ -38,6 +42,7 @@ async function runEncounterImport(
     post({
       type: 'discovered',
       operationId,
+      importKind: 'encounter-log',
       report: discovery.report(operationId),
       actors: [...discovery.actors.values()] as LocalActor[],
       diagnostics: discovery.diagnostics,
@@ -93,7 +98,7 @@ async function start(file: File, operationId: string) {
   await runEncounterImport(file, operationId, route);
 }
 
-function prepareTargetDummy(
+async function prepareTargetDummy(
   message: Extract<LocalCombatLogWorkerInput, { type: 'prepare-target-dummy' }>,
 ) {
   const paused = pausedTargetDummy;
@@ -101,7 +106,8 @@ function prepareTargetDummy(
     !paused ||
     paused.operationId !== message.operationId ||
     paused.requestId !== message.requestId ||
-    activeOperationId !== message.operationId
+    activeOperationId !== message.operationId ||
+    paused.prepared
   ) {
     return;
   }
@@ -131,8 +137,50 @@ function prepareTargetDummy(
   } as const;
   pausedTargetDummy = { ...paused, prepared: prepared.value };
   post(preparedMessage);
-  // The original File and prepared selection remain in this worker. TD-03B
-  // resumes pass two from this exact operation without another upload.
+  const plan = prepareTargetDummyImport(
+    message.operationId,
+    paused.route.discovery,
+    paused.route.localActors,
+    prepared.value,
+  );
+  await new Promise<void>((resolve) => {
+    acknowledgements.set(-1, resolve);
+    post({
+      type: 'discovered',
+      operationId: message.operationId,
+      importKind: 'target-dummy',
+      report: plan.report,
+      actors: plan.actors,
+      diagnostics: [...paused.route.diagnostics, ...plan.diagnostics],
+    });
+  });
+  if (activeOperationId !== message.operationId) return;
+  post({ type: 'progress', operationId: message.operationId, phase: 'normalizing', progress: 0 });
+  let batchId = 0;
+  await normalizePreparedTargetDummyImport(
+    paused.file,
+    plan,
+    (fightId, events) =>
+      new Promise<void>((resolve) => {
+        const currentBatchId = batchId++;
+        acknowledgements.set(currentBatchId, resolve);
+        post({
+          type: 'batch',
+          operationId: message.operationId,
+          batchId: currentBatchId,
+          fightId,
+          events,
+        });
+      }),
+    undefined,
+    (progress) =>
+      post({ type: 'progress', operationId: message.operationId, phase: 'normalizing', progress }),
+  );
+  post({
+    type: 'complete',
+    operationId: message.operationId,
+    diagnostics: [...paused.route.diagnostics, ...plan.diagnostics],
+  });
 }
 
 self.onmessage = async ({ data }: MessageEvent<LocalCombatLogWorkerInput>) => {
@@ -144,7 +192,7 @@ self.onmessage = async ({ data }: MessageEvent<LocalCombatLogWorkerInput>) => {
   }
   try {
     if (data.type === 'prepare-target-dummy') {
-      prepareTargetDummy(data);
+      await prepareTargetDummy(data);
     } else {
       await start(data.file, data.operationId);
     }

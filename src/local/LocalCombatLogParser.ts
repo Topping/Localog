@@ -1020,7 +1020,10 @@ const decodeAbsorbed = (
   };
 };
 
-function normalize(fields: string[], discovery: LocalCombatLogDiscovery): AnyEvent | null {
+export function normalizeCombatLogRecord(
+  fields: string[],
+  discovery: LocalCombatLogDiscovery,
+): AnyEvent | null {
   const timestamp = parseCombatLogTimestamp(fields[0]);
   if (timestamp === null) return null;
   const event = fields[1];
@@ -1122,7 +1125,7 @@ export function parseCombatLog(text: string, id = 'local'): LocalImportResult {
   return {
     report: discovery.report(id),
     events: records
-      .map((record) => normalize(decodeCombatLogLine(record.line), discovery))
+      .map((record) => normalizeCombatLogRecord(decodeCombatLogLine(record.line), discovery))
       .filter((event): event is AnyEvent => event !== null),
     actors: [...discovery.actors.values()],
     diagnostics: discovery.diagnostics,
@@ -1159,7 +1162,7 @@ export async function normalizeCombatLog(
     batches.clear();
   };
   for await (const record of readCombatLogLines(file, signal)) {
-    const event = normalize(decodeCombatLogLine(record.line), discovery);
+    const event = normalizeCombatLogRecord(decodeCombatLogLine(record.line), discovery);
     if (event) {
       const fight = discovery.fights.find(
         (f) => event.timestamp >= f.start_time && event.timestamp <= f.end_time,

@@ -61,7 +61,15 @@ describe('importLocalCombatLog', () => {
     const worker = FakeWorker.instances[0];
 
     await worker.emit(operation({ type: 'progress', phase: 'discovering', progress: 0.5 }));
-    await worker.emit(operation({ type: 'discovered', report, actors, diagnostics: [] }));
+    await worker.emit(
+      operation({
+        type: 'discovered',
+        importKind: 'encounter-log',
+        report,
+        actors,
+        diagnostics: [],
+      }),
+    );
     expect(worker.postMessage).toHaveBeenCalledWith({
       type: 'ack',
       operationId: 'local-id',
@@ -87,6 +95,9 @@ describe('importLocalCombatLog', () => {
       'persisting',
       'ready',
     ]);
+    expect(store.updateLocalManifest.mock.calls[1][1]).toMatchObject({
+      importKind: 'encounter-log',
+    });
     expect(progress).toHaveBeenLastCalledWith({ phase: 'persisting', progress: 1 });
     expect(progress.mock.calls.map(([value]) => value.progress)).toEqual([0.175, 0.35, 0.9, 1]);
     expect(worker.terminate).toHaveBeenCalledOnce();
@@ -159,6 +170,50 @@ describe('importLocalCombatLog', () => {
     controller.abort();
     await expect(importing).rejects.toMatchObject({ name: 'AbortError' });
     expect(store.removeLocalReport).toHaveBeenCalledWith('local-id');
+  });
+
+  it('persists a resumed target-dummy import with its manifest origin', async () => {
+    const provideInput = vi.fn().mockResolvedValue({
+      playerGuid: 'Player-1',
+      sessionId: 'session-1',
+      simcProfile: '# SimC Addon profile',
+    });
+    const importing = importLocalCombatLog(
+      new File(['log'], 'combat.txt'),
+      undefined,
+      undefined,
+      provideInput,
+    );
+    await vi.waitFor(() => expect(FakeWorker.instances).toHaveLength(1));
+    const worker = FakeWorker.instances[0];
+    const request = { discovery: { players: [], sessions: [] }, diagnostics: [] };
+    await worker.emit(operation({ type: 'target-dummy-input-required', requestId: 1, request }));
+    await worker.emit(
+      operation({
+        type: 'target-dummy-prepared',
+        requestId: 1,
+        prepared: {},
+      }),
+    );
+    await worker.emit(
+      operation({
+        type: 'discovered',
+        importKind: 'target-dummy',
+        report,
+        actors,
+        diagnostics: [],
+      }),
+    );
+    const events = [{ type: 'combatantinfo', timestamp: 10 }];
+    await worker.emit(operation({ type: 'batch', batchId: 0, fightId: 1, events }));
+    await worker.emit(operation({ type: 'complete', diagnostics: [] }));
+
+    await expect(importing).resolves.toBe('local-id');
+    expect(store.updateLocalManifest.mock.calls[1][1]).toMatchObject({
+      status: 'normalizing',
+      importKind: 'target-dummy',
+    });
+    expect(store.appendLocalEventChunk).toHaveBeenCalledWith('local-id', 1, events, 0);
   });
 
   it('rejects an unhandled synthetic pause without leaving staged data', async () => {

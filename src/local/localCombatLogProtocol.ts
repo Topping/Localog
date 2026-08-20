@@ -2,6 +2,7 @@ import type { AnyEvent } from 'parser/core/Events';
 import type Report from 'parser/core/Report';
 
 import type { LocalActor, LocalDiagnostic } from './LocalCombatLogParser';
+import type { LocalImportKind } from './localReportStore';
 import type {
   TargetDummyActorDiscoveryResult,
   TargetDummySessionCandidate,
@@ -48,6 +49,7 @@ export type LocalCombatLogWorkerOutput =
     })
   | (OperationMessage & {
       readonly type: 'discovered';
+      readonly importKind: LocalImportKind;
       readonly report: Report;
       readonly actors: LocalActor[];
       readonly diagnostics: LocalDiagnostic[];
