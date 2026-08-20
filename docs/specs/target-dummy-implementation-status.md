@@ -27,22 +27,22 @@ specification.
 
 ## Work items
 
-| ID     | Status  | Outcome                                                                                   | Depends on     |
-| ------ | ------- | ----------------------------------------------------------------------------------------- | -------------- |
-| TD-00A | Pending | Add reviewed compact fixtures and provenance notes for default tests.                     | —              |
-| TD-00B | Pending | Prove the minimal analysis path, `boss: -1`, five-second pre-roll, and untouched targets. | TD-00A         |
-| TD-01A | Pending | Implement discovery contracts, actor aggregation, and recorder selection.                 | TD-00B         |
-| TD-01B | Pending | Implement ownership, sessionization, cleave grouping, confidence, and boundaries.         | TD-01A         |
-| TD-01C | Pending | Route one discovery pass automatically to the existing or synthetic path.                 | TD-01B         |
-| TD-02A | Pending | Implement the bounded official-addon SimC parser.                                         | TD-00B         |
-| TD-02B | Pending | Add the verified talent snapshot, generator, and talent decoder.                          | TD-02A         |
-| TD-02C | Pending | Build and validate normalized `CombatantInfoEvent` objects.                               | TD-02B         |
-| TD-03A | Pending | Add worker/controller pause and resume for session and SimC input.                        | TD-01C, TD-02C |
-| TD-03B | Pending | Normalize and persist the prepared synthetic fight through the local report store.        | TD-03A         |
-| TD-04A | Pending | Add character, session, and SimC states behind the existing single file picker.           | TD-03B         |
-| TD-04B | Pending | Add cancellation, recovery, diagnostics, and successful navigation behavior.              | TD-04A         |
-| TD-05A | Pending | Add end-to-end coverage for automatic encounter and synthetic routing.                    | TD-04B         |
-| TD-05B | Pending | Run capture-wide performance, architecture, and release verification.                     | TD-05A         |
+| ID     | Status   | Outcome                                                                                   | Depends on     |
+| ------ | -------- | ----------------------------------------------------------------------------------------- | -------------- |
+| TD-00A | Complete | Add reviewed compact fixtures and provenance notes for default tests.                     | —              |
+| TD-00B | Pending  | Prove the minimal analysis path, `boss: -1`, five-second pre-roll, and untouched targets. | TD-00A         |
+| TD-01A | Pending  | Implement discovery contracts, actor aggregation, and recorder selection.                 | TD-00B         |
+| TD-01B | Pending  | Implement ownership, sessionization, cleave grouping, confidence, and boundaries.         | TD-01A         |
+| TD-01C | Pending  | Route one discovery pass automatically to the existing or synthetic path.                 | TD-01B         |
+| TD-02A | Pending  | Implement the bounded official-addon SimC parser.                                         | TD-00B         |
+| TD-02B | Pending  | Add the verified talent snapshot, generator, and talent decoder.                          | TD-02A         |
+| TD-02C | Pending  | Build and validate normalized `CombatantInfoEvent` objects.                               | TD-02B         |
+| TD-03A | Pending  | Add worker/controller pause and resume for session and SimC input.                        | TD-01C, TD-02C |
+| TD-03B | Pending  | Normalize and persist the prepared synthetic fight through the local report store.        | TD-03A         |
+| TD-04A | Pending  | Add character, session, and SimC states behind the existing single file picker.           | TD-03B         |
+| TD-04B | Pending  | Add cancellation, recovery, diagnostics, and successful navigation behavior.              | TD-04A         |
+| TD-05A | Pending  | Add end-to-end coverage for automatic encounter and synthetic routing.                    | TD-04B         |
+| TD-05B | Pending  | Run capture-wide performance, architecture, and release verification.                     | TD-05A         |
 
 ## Work-item acceptance and verification
 
@@ -130,11 +130,11 @@ Stop and request a product decision if `boss: -1` requires a core semantic chang
 
 Add one entry when a work item changes state.
 
-| Date | Work item | Status change | Commit | Verification and notes              |
-| ---- | --------- | ------------- | ------ | ----------------------------------- |
-| —    | —         | —             | —      | No implementation work has started. |
+| Date       | Work item | Status change      | Commit      | Verification and notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------- | --------- | ------------------ | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-08-20 | TD-00A    | Pending → Complete | this commit | Added four compact, integrity-tested fixtures (15 records / 2,836 bytes) with source-revision provenance, purpose, sanitization, and hashes; no full capture was copied. `./node_modules/.bin/vitest run src/local/target-dummy/test-fixtures.test.ts` passed (4 tests); `./node_modules/.bin/oxfmt --check src/local/target-dummy/test-fixtures.test.ts src/local/target-dummy/test-fixtures/README.md` passed; `./node_modules/.bin/oxlint --max-warnings 0 --deny-warnings src/local/target-dummy/test-fixtures.test.ts` passed with 0 warnings/errors; `./node_modules/.bin/tsc --noEmit` passed; `git diff --check` passed; `cmp` of each synthetic fixture against its sibling-repository source passed. `pnpm test …` could not start because the local pnpm launcher attempted an unavailable registry signature fetch, so the checked-in Vitest binary was used directly. |
 
 ## Next recommended work
 
-Start **TD-00A**. Review and minimize the sibling repository's compact fixtures, add explicit
-provenance, and avoid importing the large capture into the default suite.
+Start **TD-00B**. Use the compact fixtures to prove the minimal analysis path, the local-only
+`boss: -1` sentinel, the clamped five-second pre-roll, and unchanged target identities and payloads.
