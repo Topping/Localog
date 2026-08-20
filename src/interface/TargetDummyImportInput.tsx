@@ -4,6 +4,7 @@ import type {
   TargetDummyInputRequest,
   TargetDummyPreparationInput,
 } from 'local/localCombatLogProtocol';
+import styles from './TargetDummyImportInput.module.scss';
 
 interface Props {
   request: TargetDummyInputRequest;
@@ -58,14 +59,19 @@ export default function TargetDummyImportInput({
   };
 
   return (
-    <form onSubmit={submit} style={{ marginTop: 20 }} aria-label="Prepare target-dummy import">
-      <div className="alert alert-info" role="status">
-        This log contains target-dummy activity instead of a complete encounter. Choose the
-        character and attempt, then paste that character's current SimulationCraft addon export.
+    <form onSubmit={submit} className={styles.Form} aria-label="Prepare target-dummy import">
+      <div className={styles.Intro} role="status">
+        <strong>Target-dummy activity found</strong>
+        <span>
+          Choose the character and attempt, then add that character's current SimulationCraft
+          profile.
+        </span>
       </div>
 
-      <div className="form-group">
-        <label htmlFor="target-dummy-player">Character</label>
+      <div className={styles.Field}>
+        <label className={styles.FieldLabel} htmlFor="target-dummy-player">
+          Character
+        </label>
         {needsCharacterChoice ? (
           <select
             id="target-dummy-player"
@@ -83,45 +89,62 @@ export default function TargetDummyImportInput({
             ))}
           </select>
         ) : (
-          <div id="target-dummy-player">
-            <strong>{selectedPlayer?.name ?? selectedPlayer?.guid}</strong>
+          <div id="target-dummy-player" className={styles.ReadonlyValue}>
+            {selectedPlayer?.name ?? selectedPlayer?.guid}
           </div>
         )}
       </div>
 
-      <fieldset disabled={disabled || !playerGuid} style={{ marginTop: 15 }}>
-        <legend style={{ fontSize: 'inherit', fontWeight: 600 }}>Attempt</legend>
-        {sessions.map((session) => {
-          const targets = session.targetGuids.map((guid) => actorName(request, guid));
-          const targetLabel =
-            targets.length === 1 ? targets[0] : `${targets[0]} and ${targets.length - 1} more`;
-          return (
-            <label key={session.id} style={{ display: 'block', marginBottom: 10 }}>
-              <input
-                type="radio"
-                name="target-dummy-session"
-                value={session.id}
-                checked={sessionId === session.id}
-                onChange={(event) => setSessionId(event.target.value)}
-                required
-              />{' '}
-              {selectedPlayer?.name ?? selectedPlayer?.guid} ·{' '}
-              {formatAttemptTime(session.activityStart)} · {formatDuration(session.durationMs)} ·{' '}
-              {targetLabel} · {session.confidence}
-            </label>
-          );
-        })}
+      <fieldset disabled={disabled || !playerGuid} className={styles.Attempts}>
+        <legend className={styles.FieldLabel}>Attempt</legend>
+        <div className={styles.AttemptList}>
+          {sessions.map((session) => {
+            const targets = session.targetGuids.map((guid) => actorName(request, guid));
+            const targetLabel =
+              targets.length === 1 ? targets[0] : `${targets[0]} and ${targets.length - 1} more`;
+            return (
+              <label
+                key={session.id}
+                className={`${styles.Attempt} ${sessionId === session.id ? styles.SelectedAttempt : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="target-dummy-session"
+                  value={session.id}
+                  checked={sessionId === session.id}
+                  onChange={(event) => setSessionId(event.target.value)}
+                  required
+                />
+                <span className={styles.AttemptDetails}>
+                  <strong>{selectedPlayer?.name ?? selectedPlayer?.guid}</strong>
+                  <span>
+                    {formatAttemptTime(session.activityStart)} ·{' '}
+                    {formatDuration(session.durationMs)}
+                  </span>
+                  <span>{targetLabel}</span>
+                </span>
+                <span className={styles.Confidence}>{session.confidence}</span>
+              </label>
+            );
+          })}
+        </div>
       </fieldset>
 
-      <div className="form-group" style={{ marginTop: 15 }}>
-        <label htmlFor="target-dummy-simc">SimulationCraft addon export</label>
+      <div className={styles.Field}>
+        <label className={styles.FieldLabel} htmlFor="target-dummy-simc">
+          SimulationCraft addon export
+        </label>
+        <span className={styles.FieldHelp}>
+          In World of Warcraft, run <code>/simc</code> on the selected character and paste the full
+          output.
+        </span>
         <textarea
           id="target-dummy-simc"
-          className="form-control"
-          rows={10}
+          className={`${styles.ProfileInput} form-control`}
+          rows={8}
           value={simcProfile}
           onChange={(event) => setSimcProfile(event.target.value)}
-          placeholder="In World of Warcraft, run /simc on the selected character and paste the complete output here."
+          placeholder="Paste the complete /simc output here…"
           disabled={disabled}
           required
         />
@@ -135,8 +158,10 @@ export default function TargetDummyImportInput({
       )}
 
       {needsFaction && (
-        <div className="form-group">
-          <label htmlFor="target-dummy-faction">Faction</label>
+        <div className={styles.Field}>
+          <label className={styles.FieldLabel} htmlFor="target-dummy-faction">
+            Faction
+          </label>
           <select
             id="target-dummy-faction"
             className="form-control"
@@ -152,13 +177,11 @@ export default function TargetDummyImportInput({
         </div>
       )}
 
-      <p>
-        <small>
-          Identity, specialization, talents, and equipment come from this profile. Live ratings and
-          pull-time auras are unavailable and will use explicit defaults.
-        </small>
+      <p className={styles.FinePrint}>
+        Identity, specialization, talents, and equipment come from this profile. Live ratings and
+        pull-time auras are unavailable and will use explicit defaults.
       </p>
-      <details style={{ marginBottom: 15 }}>
+      <details className={styles.TechnicalDetails}>
         <summary>Technical discovery details</summary>
         <p>
           <small>
@@ -180,14 +203,16 @@ export default function TargetDummyImportInput({
           ))}
         </ul>
       </details>
-      <button className="btn btn-primary" type="submit" disabled={disabled}>
-        {disabled ? 'Validating…' : 'Import selected attempt'}
-      </button>
-      {onStartOver && (
-        <button className="btn btn-link" type="button" disabled={disabled} onClick={onStartOver}>
-          Start over
+      <div className={styles.Actions}>
+        <button className="btn btn-primary" type="submit" disabled={disabled}>
+          {disabled ? 'Validating…' : 'Import selected attempt'}
         </button>
-      )}
+        {onStartOver && (
+          <button className="btn btn-link" type="button" disabled={disabled} onClick={onStartOver}>
+            Start over
+          </button>
+        )}
+      </div>
     </form>
   );
 }

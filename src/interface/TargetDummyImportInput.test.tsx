@@ -117,14 +117,18 @@ describe('TargetDummyImportInput', () => {
 
     expect(screen.getByLabelText('Character')).toHaveValue('');
     fireEvent.change(screen.getByLabelText('Character'), { target: { value: 'Player-1' } });
-    expect(screen.getByText(/Ada · .*Training Dummy and 1 more · likely/)).toBeInTheDocument();
-    expect(screen.queryByText(/Training Dummy · possible/)).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('radio', { name: /Training Dummy.*possible/ }),
+    ).not.toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText('Character'), { target: { value: 'Player-2' } });
     expect(
-      screen.queryByText(/Ada · .*Training Dummy and 1 more · likely/),
+      screen.queryByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }),
     ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByLabelText(/Grace · .*Training Dummy · possible/));
+    fireEvent.click(screen.getByRole('radio', { name: /Grace.*Training Dummy.*possible/ }));
     fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
       target: { value: '# SimulationCraft Addon\nwarrior="Grace"' },
     });
@@ -144,7 +148,7 @@ describe('TargetDummyImportInput', () => {
       <TargetDummyImportInput request={request} disabled={false} onSubmit={onSubmit} />,
     );
     fireEvent.change(screen.getByLabelText('Character'), { target: { value: 'Player-1' } });
-    fireEvent.click(screen.getByLabelText(/Ada · .*Training Dummy and 1 more · likely/));
+    fireEvent.click(screen.getByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }));
     fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
       target: { value: 'complete profile' },
     });

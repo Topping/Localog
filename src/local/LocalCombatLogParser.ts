@@ -15,6 +15,7 @@ import {
   type DispelEvent,
   type DrainEvent,
   type HealEvent,
+  type HealAbsorbedEvent,
   type InterruptEvent,
   type RefreshBuffEvent,
   type RefreshDebuffEvent,
@@ -167,11 +168,12 @@ const targetFields = (fields: string[]) =>
   hasNativeActorFields(fields)
     ? { guid: fields[6], name: fields[7], flags: fields[8] }
     : { guid: fields[5], name: fields[6], flags: fields[7] };
+const hasSpellPrefix = (event: string) =>
+  !/^SWING_/.test(event) && event !== 'ENVIRONMENTAL_DAMAGE';
 const spellFields = (fields: string[], event: string) =>
   hasNativeActorFields(fields)
-    ? // Swing events start their damage payload immediately after the target
-      // flags; those values are not an ability ID/name/school tuple.
-      /^SWING_/.test(event)
+    ? // Swing and environmental events have no ability tuple.
+      !hasSpellPrefix(event)
       ? {
           id: undefined,
           name: undefined,
@@ -226,7 +228,7 @@ const advancedActorState = (
   target?: LocalActor,
 ): AdvancedActorState | undefined => {
   if (!hasNativeActorFields(fields)) return undefined;
-  const start = /^SWING_/.test(event) ? 10 : 13;
+  const start = hasSpellPrefix(event) ? 13 : 10;
   const infoGuid = fields[start];
   if ((!isGuid(infoGuid) && !isEmptyGuid(infoGuid)) || fields.length < start + 19) return undefined;
 
@@ -265,12 +267,12 @@ const advancedActorState = (
 const eventPayloadStart = (fields: string[], event: string, advanced?: AdvancedActorState) =>
   advanced?.suffixStart ??
   (hasNativeActorFields(fields)
-    ? /^SWING_/.test(event)
-      ? 10
-      : 13
-    : /^SWING_/.test(event)
-      ? 8
-      : 11);
+    ? hasSpellPrefix(event)
+      ? 13
+      : 10
+    : hasSpellPrefix(event)
+      ? 11
+      : 8);
 
 interface LocalResourceChange {
   resourceChange: number;
@@ -326,15 +328,28 @@ const localResourceChange = (
           : [],
   };
 };
-const ignored = new Set(['ZONE_CHANGE', 'COMBAT_LOG_VERSION', 'ENCOUNTER_START', 'ENCOUNTER_END']);
+// These records are valid and useful to the import pipeline, but do not map to
+// analyzer events. In particular, SWING_DAMAGE_LANDED duplicates SWING_DAMAGE
+// with the target's advanced snapshot and must not be counted a second time.
+const ignored = new Set([
+  'ZONE_CHANGE',
+  'MAP_CHANGE',
+  'COMBAT_LOG_VERSION',
+  'ENCOUNTER_START',
+  'ENCOUNTER_END',
+  'SWING_DAMAGE_LANDED',
+  'SPELL_CAST_FAILED',
+]);
 const supportedEvents = new Set([
   'COMBATANT_INFO',
   'SWING_DAMAGE',
+  'ENVIRONMENTAL_DAMAGE',
   'RANGE_DAMAGE',
   'SPELL_DAMAGE',
   'SPELL_PERIODIC_DAMAGE',
   'SPELL_HEAL',
   'SPELL_PERIODIC_HEAL',
+  'SPELL_HEAL_ABSORBED',
   'SPELL_CAST_START',
   'SPELL_CAST_SUCCESS',
   'SPELL_CHANNEL_START',
@@ -347,6 +362,7 @@ const supportedEvents = new Set([
   'SPELL_AURA_APPLIED_DOSE',
   'SPELL_AURA_REMOVED_DOSE',
   'SPELL_ENERGIZE',
+  'SPELL_PERIODIC_ENERGIZE',
   'SPELL_DRAIN',
   'SPELL_LEECH',
   'SPELL_SUMMON',
@@ -488,7 +504,7 @@ export class LocalCombatLogDiscovery {
     const targetInfo = targetFields(fields);
     const source = this.actor(sourceInfo.guid, sourceInfo.name, sourceInfo.flags);
     const target = this.actor(targetInfo.guid, targetInfo.name, targetInfo.flags);
-    if (event === 'SPELL_ABSORBED') {
+    if (event === 'SPELL_ABSORBED' || event === 'SPELL_HEAL_ABSORBED') {
       const absorberStart = hasNativeActorFields(fields) ? 13 : 11;
       const absorber = this.actor(
         fields[absorberStart],
@@ -527,13 +543,7 @@ export class LocalCombatLogDiscovery {
       target.ownerId = source.id;
       target.friendly = source.friendly;
     }
-    if (event.endsWith('_MISSED')) {
-      this.addDiagnostic({
-        line,
-        severity: 'warning',
-        message: `Skipped ${event}; missed records are not normalized as damage.`,
-      });
-    } else if (!ignored.has(event) && !supportedEvents.has(event)) {
+    if (!event.endsWith('_MISSED') && !ignored.has(event) && !supportedEvents.has(event)) {
       this.addDiagnostic({
         line,
         severity: 'warning',
@@ -691,7 +701,14 @@ interface DecodeContext {
   timestamp: number;
   source?: LocalActor;
   target?: LocalActor;
-  spell: ReturnType<typeof spellFields>;
+  spell: {
+    id?: string;
+    name?: string;
+    school?: string;
+    auraType?: string;
+    amount?: string;
+    stack?: string;
+  };
   advanced?: AdvancedActorState;
   payloadStart: number;
 }
@@ -912,7 +929,7 @@ const decodeResource = (context: DecodeContext): ResourceChangeEvent | DrainEven
   const { advanced, event, fields, payloadStart, source, spell, target, timestamp } = context;
   const eventAbility = ability(spell.id, spell.name, spell.school);
   if (!source || !target || !eventAbility) return null;
-  if (event === 'SPELL_ENERGIZE') {
+  if (event === 'SPELL_ENERGIZE' || event === 'SPELL_PERIODIC_ENERGIZE') {
     return {
       type: EventType.ResourceChange,
       timestamp,
@@ -1020,6 +1037,35 @@ const decodeAbsorbed = (
   };
 };
 
+const decodeHealAbsorbed = (
+  context: DecodeContext,
+  discovery: LocalCombatLogDiscovery,
+): HealAbsorbedEvent | null => {
+  const { fields, payloadStart, source, spell, target, timestamp } = context;
+  const absorbAbility = ability(spell.id, spell.name, spell.school);
+  const healer = discovery.actors.get(fields[payloadStart]);
+  const healerAbility = ability(
+    fields[payloadStart + 4],
+    fields[payloadStart + 5],
+    fields[payloadStart + 6],
+  );
+  if (!source || !target || !absorbAbility || !healer || !healerAbility) return null;
+  return {
+    type: EventType.HealAbsorbed,
+    timestamp,
+    ability: absorbAbility,
+    sourceID: source.id,
+    sourceIsFriendly: source.friendly,
+    targetID: target.id,
+    targetInstance: 0,
+    targetIsFriendly: target.friendly,
+    healerID: healer.id,
+    healerIsFriendly: healer.friendly,
+    healerAbility,
+    amount: number(fields[payloadStart + 7]) ?? 0,
+  };
+};
+
 export function normalizeCombatLogRecord(
   fields: string[],
   discovery: LocalCombatLogDiscovery,
@@ -1035,8 +1081,19 @@ export function normalizeCombatLogRecord(
     return combatantInfo(source.id, timestamp, specID);
   }
   if (event.endsWith('_MISSED') || !supportedEvents.has(event)) return null;
-  const spell = spellFields(fields, event);
   const advanced = advancedActorState(fields, event, source, target);
+  const rawPayloadStart = eventPayloadStart(fields, event, advanced);
+  const spell =
+    event === 'ENVIRONMENTAL_DAMAGE'
+      ? {
+          id: '0',
+          name: fields[rawPayloadStart] || 'Environmental Damage',
+          school: fields[rawPayloadStart + (advanced ? 4 : 3)],
+          auraType: undefined,
+          amount: undefined,
+          stack: undefined,
+        }
+      : spellFields(fields, event);
   const context: DecodeContext = {
     fields,
     event,
@@ -1045,10 +1102,11 @@ export function normalizeCombatLogRecord(
     target,
     spell,
     advanced,
-    payloadStart: eventPayloadStart(fields, event, advanced),
+    payloadStart: rawPayloadStart + (event === 'ENVIRONMENTAL_DAMAGE' ? 1 : 0),
   };
   switch (event) {
     case 'SWING_DAMAGE':
+    case 'ENVIRONMENTAL_DAMAGE':
     case 'RANGE_DAMAGE':
     case 'SPELL_DAMAGE':
     case 'SPELL_PERIODIC_DAMAGE':
@@ -1070,6 +1128,7 @@ export function normalizeCombatLogRecord(
     case 'SPELL_AURA_REMOVED_DOSE':
       return decodeAura(context);
     case 'SPELL_ENERGIZE':
+    case 'SPELL_PERIODIC_ENERGIZE':
     case 'SPELL_DRAIN':
     case 'SPELL_LEECH':
       return decodeResource(context);
@@ -1080,6 +1139,8 @@ export function normalizeCombatLogRecord(
       return decodeUtility(context, discovery);
     case 'SPELL_ABSORBED':
       return decodeAbsorbed(context, discovery);
+    case 'SPELL_HEAL_ABSORBED':
+      return decodeHealAbsorbed(context, discovery);
     case 'UNIT_DIED':
     case 'UNIT_DESTROYED':
       return target
