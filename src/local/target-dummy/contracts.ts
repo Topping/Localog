@@ -1,3 +1,5 @@
+import type { LocalCombatLogDiscovery, LocalDiagnostic } from '../LocalCombatLogParser';
+
 export type TargetDummyActorKind =
   | 'player'
   | 'creature'
@@ -94,3 +96,24 @@ export interface TargetDummyActorDiscoveryResult {
   readonly recordsScanned: number;
   readonly retainedState: TargetDummyDiscoveryRetentionSummary;
 }
+
+export interface UnsupportedTargetDummyInput {
+  readonly code: 'no-usable-encounter-or-target-dummy-session';
+  readonly message: string;
+  readonly diagnostics: readonly LocalDiagnostic[];
+}
+
+export type TargetDummyDiscoveryRoute =
+  | {
+      readonly type: 'encounter';
+      readonly discovery: LocalCombatLogDiscovery;
+    }
+  | {
+      readonly type: 'target-dummy-input-required';
+      readonly discovery: TargetDummyActorDiscoveryResult;
+      readonly diagnostics: readonly LocalDiagnostic[];
+    }
+  | {
+      readonly type: 'unsupported-input';
+      readonly error: UnsupportedTargetDummyInput;
+    };

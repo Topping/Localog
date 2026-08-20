@@ -360,7 +360,7 @@ const supportedEvents = new Set([
   'SPELL_RESURRECT',
 ]);
 
-class Discovery {
+export class LocalCombatLogDiscovery {
   readonly diagnostics: LocalDiagnostic[] = [];
   readonly actors = new Map<string, LocalActor>();
   readonly fights: WCLFight[] = [];
@@ -542,8 +542,7 @@ class Discovery {
     }
   }
   finish(line: number) {
-    if (!this.version)
-      throw new LocalCombatLogParseError('This is not a supported Retail advanced combat log.');
+    this.validateVersion();
     if (this.active) {
       this.active.end_time = this.end;
       this.active.kill = false;
@@ -561,6 +560,10 @@ class Discovery {
         'The log contains no COMBATANT_INFO records.',
         this.diagnostics,
       );
+  }
+  validateVersion() {
+    if (!this.version)
+      throw new LocalCombatLogParseError('This is not a supported Retail advanced combat log.');
   }
   report(id: string): Report {
     const actors = [...this.actors.values()];
@@ -937,7 +940,10 @@ const decodeResource = (context: DecodeContext): ResourceChangeEvent | DrainEven
   };
 };
 
-const decodeUtility = (context: DecodeContext, discovery: Discovery): AnyEvent | null => {
+const decodeUtility = (
+  context: DecodeContext,
+  discovery: LocalCombatLogDiscovery,
+): AnyEvent | null => {
   const { event, fields, payloadStart, source, spell, target, timestamp } = context;
   const eventAbility = ability(spell.id, spell.name, spell.school);
   if (!source || !target || !eventAbility) return null;
@@ -987,7 +993,10 @@ const decodeUtility = (context: DecodeContext, discovery: Discovery): AnyEvent |
   } satisfies SpellstealEvent;
 };
 
-const decodeAbsorbed = (context: DecodeContext, discovery: Discovery): AbsorbedEvent | null => {
+const decodeAbsorbed = (
+  context: DecodeContext,
+  discovery: LocalCombatLogDiscovery,
+): AbsorbedEvent | null => {
   const { fields, source: attacker, spell, target, timestamp } = context;
   if (!target) return null;
   const start = hasNativeActorFields(fields) ? 13 : 11;
@@ -1011,7 +1020,7 @@ const decodeAbsorbed = (context: DecodeContext, discovery: Discovery): AbsorbedE
   };
 };
 
-function normalize(fields: string[], discovery: Discovery): AnyEvent | null {
+function normalize(fields: string[], discovery: LocalCombatLogDiscovery): AnyEvent | null {
   const timestamp = parseCombatLogTimestamp(fields[0]);
   if (timestamp === null) return null;
   const event = fields[1];
@@ -1107,7 +1116,7 @@ export function parseCombatLog(text: string, id = 'local'): LocalImportResult {
     .filter(Boolean)
     .map((line, index) => ({ line, lineNumber: index + 1 }));
   if (!records.length) throw new LocalCombatLogParseError('The combat log is empty.');
-  const discovery = new Discovery();
+  const discovery = new LocalCombatLogDiscovery();
   for (const record of records) discovery.line(decodeCombatLogLine(record.line), record.lineNumber);
   discovery.finish(records[records.length - 1].lineNumber);
   return {
@@ -1125,7 +1134,7 @@ export async function discoverCombatLog(
   signal?: AbortSignal,
   progress?: (value: number) => void,
 ) {
-  const discovery = new Discovery();
+  const discovery = new LocalCombatLogDiscovery();
   let lastLine = 0;
   for await (const record of readCombatLogLines(file, signal)) {
     discovery.line(decodeCombatLogLine(record.line), record.lineNumber);
@@ -1138,7 +1147,7 @@ export async function discoverCombatLog(
 }
 export async function normalizeCombatLog(
   file: File,
-  discovery: Discovery,
+  discovery: LocalCombatLogDiscovery,
   onBatch: (fightId: number, events: AnyEvent[]) => Promise<void> | void,
   signal?: AbortSignal,
   progress?: (value: number) => void,
