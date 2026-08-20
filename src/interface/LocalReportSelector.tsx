@@ -1,17 +1,57 @@
 import { DragEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { importLocalCombatLog, type ImportProgress } from 'local/LocalReportImport';
+import {
+  importLocalCombatLog,
+  type ImportProgress,
+  type TargetDummyInputHandler,
+} from 'local/LocalReportImport';
+import type {
+  TargetDummyInputRequest,
+  TargetDummyPreparationInput,
+} from 'local/localCombatLogProtocol';
 import { recoverLocalReports } from 'local/localReportStore';
 import LocalReportManager from './LocalReportManager';
+import TargetDummyImportInput from './TargetDummyImportInput';
 
 export default function LocalReportSelector() {
   const input = useRef<HTMLInputElement>(null);
   const abortController = useRef<AbortController | null>(null);
+  const targetDummyInputResolver = useRef<((input: TargetDummyPreparationInput) => void) | null>(
+    null,
+  );
   const [progress, setProgress] = useState<ImportProgress | null>(null);
+  const [targetDummyRequest, setTargetDummyRequest] = useState<TargetDummyInputRequest | null>(
+    null,
+  );
+  const [targetDummySubmitting, setTargetDummySubmitting] = useState(false);
   const [error, setError] = useState('');
   const [storageWarning, setStorageWarning] = useState('');
   const [persistent, setPersistent] = useState<boolean | null>(null);
   const navigate = useNavigate();
+
+  const requestTargetDummyInput: TargetDummyInputHandler = (request) => {
+    setTargetDummyRequest(request);
+    setTargetDummySubmitting(false);
+    return new Promise((resolve) => {
+      targetDummyInputResolver.current = resolve;
+    });
+  };
+
+  const submitTargetDummyInput = (targetDummyInput: TargetDummyPreparationInput) => {
+    const resolve = targetDummyInputResolver.current;
+    if (!resolve) return;
+    targetDummyInputResolver.current = null;
+    setTargetDummySubmitting(true);
+    resolve(targetDummyInput);
+  };
+
+  const updateProgress = (nextProgress: ImportProgress) => {
+    setProgress(nextProgress);
+    if (nextProgress.phase !== 'discovering') {
+      setTargetDummyRequest(null);
+      setTargetDummySubmitting(false);
+    }
+  };
 
   const importFile = async (file?: File) => {
     if (!file) return;
@@ -19,6 +59,8 @@ export default function LocalReportSelector() {
     abortController.current = controller;
     setError('');
     setStorageWarning('');
+    setTargetDummyRequest(null);
+    setTargetDummySubmitting(false);
     setProgress({ phase: 'discovering', progress: 0 });
     try {
       if (navigator.storage?.estimate) {
@@ -32,7 +74,12 @@ export default function LocalReportSelector() {
         }
       }
       await recoverLocalReports();
-      const id = await importLocalCombatLog(file, setProgress, controller.signal);
+      const id = await importLocalCombatLog(
+        file,
+        updateProgress,
+        controller.signal,
+        requestTargetDummyInput,
+      );
       navigate(`/local/${id}`);
     } catch (reason) {
       if (reason instanceof DOMException && reason.name === 'AbortError') {
@@ -40,8 +87,11 @@ export default function LocalReportSelector() {
       } else {
         setError(reason instanceof Error ? reason.message : 'Unable to import this combat log.');
       }
+      setTargetDummyRequest(null);
+      setTargetDummySubmitting(false);
       setProgress(null);
     } finally {
+      targetDummyInputResolver.current = null;
       abortController.current = null;
       if (input.current) input.current.value = '';
     }
@@ -104,7 +154,11 @@ export default function LocalReportSelector() {
           <progress value={progress.progress} max={1} style={{ width: '100%' }} />
           <span>
             {progress.phase === 'discovering'
-              ? 'Discovering encounters'
+              ? targetDummyRequest
+                ? targetDummySubmitting
+                  ? 'Validating target-dummy details'
+                  : 'Waiting for target-dummy details'
+                : 'Discovering encounters and target-dummy attempts'
               : progress.phase === 'normalizing'
                 ? 'Normalizing events'
                 : 'Saving'}{' '}
@@ -118,6 +172,13 @@ export default function LocalReportSelector() {
             Cancel
           </button>
         </div>
+      )}
+      {targetDummyRequest && (
+        <TargetDummyImportInput
+          request={targetDummyRequest}
+          disabled={targetDummySubmitting}
+          onSubmit={submitTargetDummyInput}
+        />
       )}
       {error && (
         <div className="alert alert-danger" role="alert" style={{ marginTop: 10 }}>
