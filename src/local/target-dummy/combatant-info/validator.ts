@@ -1,4 +1,4 @@
-import SPECS from 'game/SPECS';
+import { getSpecMetadata } from 'game/getSpecMetadata';
 
 import type {
   ParsedSimcAddonProfile,
@@ -140,11 +140,11 @@ export function validateCombatantInfoProfile(
       'Select the matching player or paste /simc output from that character.',
     );
   }
-  const spec = SPECS[talents.specId];
+  const spec = getSpecMetadata(talents.specId);
   if (
     spec === undefined ||
-    CLASS_NAMES[profile.class] !== spec.wclClassName ||
-    normalizedSpecName(profile.spec) !== normalizedSpecName(spec.wclSpecName)
+    CLASS_NAMES[profile.class] !== spec.className ||
+    normalizedSpecName(profile.spec) !== normalizedSpecName(spec.specName)
   ) {
     return failure(
       'SIMC_CLASS_SPEC_MISMATCH',
