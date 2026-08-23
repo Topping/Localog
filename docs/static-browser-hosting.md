@@ -48,15 +48,18 @@ Enable GitHub Pages with **GitHub Actions** as its source. The workflow runs for
 ## Supported paths and limitations
 
 - Local imports currently target current Retail advanced combat logs. Incompatible parser/schema versions are recoverable by deleting and re-importing the report.
-- A standalone target-dummy capture uses the same file picker. After discovery, choose the player and
-  attempt and paste that character's complete official SimulationCraft addon `/simc` export. Files
-  containing a usable genuine encounter follow the encounter path and do not offer nearby unmarked
-  dummy activity.
+- A standalone target-dummy capture uses the same file picker. The optional, separately installable
+  `wow-addon/Localog_Companion` addon guides advanced logging, records one readable pull-time aura
+  snapshot, and produces a single combined SimulationCraft export. After discovery, choose the
+  matching player and attempt and paste that value. A plain official `/simc` export remains supported
+  without pull-time auras. Files containing a usable genuine encounter follow the encounter path and
+  do not offer nearby unmarked dummy activity.
 - Target-dummy preparation currently supports only Retail project 1, combat-log version 22, WoW
   12.1.0, and its checked-in talent snapshot. Character identity, spec, decoded talents, and equipped
-  items come from `/simc`; unavailable live ratings and pull-time auras are stored as explicit
-  zero/empty defaults and are called out in the imported report. An equipped item without an item
-  level blocks import.
+  items come from `/simc`; unavailable live ratings remain explicit zero defaults. A validated
+  companion snapshot materializes safely sourced pull-time auras and reports partial/source omissions;
+  without one, auras remain empty with the existing warning. An equipped item without an item level
+  blocks import. Player/build identity is enforced, while the user's selected attempt is authoritative.
 - Target-dummy discovery and normalization stay in the browser worker. Only the selected attempt's
   analyzed window is normalized into IndexedDB, with a five-second pre-roll clamped to the source
   segment boundary; the source file is not uploaded.

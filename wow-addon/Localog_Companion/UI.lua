@@ -95,7 +95,7 @@ function Localog:BuildEvidenceText()
   local context = probe.context or self:GetClientContext()
   local enums = self:GetRestrictionEnums()
   local lines = {
-    "Localog Companion CA-03 evidence",
+    "Localog Companion CA-06 evidence",
     "addon_version=" .. valueOrUnknown(context.addonVersion),
     "client_version=" .. valueOrUnknown(context.clientVersion),
     "client_build=" .. valueOrUnknown(context.clientBuild),
@@ -111,6 +111,8 @@ function Localog:BuildEvidenceText()
     "logging_was_preexisting=" .. valueOrUnknown(session.loggingWasPreexisting),
     "logging_ownership_unknown=" .. valueOrUnknown(session.loggingOwnershipUnknown),
     "logging_retry_seconds=" .. valueOrUnknown(self:GetLoggingRetrySeconds()),
+    "session_notice=" .. valueOrUnknown(session.notice or "none"),
+    "snapshot_age_seconds=" .. valueOrUnknown(self:GetSnapshotAgeSeconds()),
     "simc_addon_version=" .. valueOrUnknown(integration.simcVersion),
     "simc_minimum_tested_version=" .. valueOrUnknown(integration.minimumTestedVersion),
     "simc_public_api=" .. valueOrUnknown(integration.publicApiAvailable),
@@ -119,6 +121,10 @@ function Localog:BuildEvidenceText()
     "simc_convenience_issue=" .. valueOrUnknown(integration.convenienceIssue or "none"),
     "simc_stable_export_status=" .. valueOrUnknown(integration.stableStatus),
     "simc_stable_export_issue=" .. valueOrUnknown(integration.stableIssue or "none"),
+    "simc_stable_export_count=" .. valueOrUnknown(integration.stableExportCount),
+    "simc_convenience_export_count=" .. valueOrUnknown(integration.convenienceExportCount),
+    "simc_convenience_distinct_outputs="
+      .. valueOrUnknown(integration.convenienceDistinctOutputCount),
     "armed_at=" .. valueOrUnknown(probe.armedAt),
     "armed_restrictions=" .. restrictionSummary(probe.armedRestrictions),
   }
@@ -235,7 +241,7 @@ local function createEvidenceFrame()
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Localog CA-03 evidence")
+  title:SetText("Localog CA-06 evidence")
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
@@ -260,8 +266,14 @@ local function createEvidenceFrame()
   return frame
 end
 
-local function getStatusText(session, retrySeconds)
+local function getStatusText(session, retrySeconds, snapshotAgeSeconds)
   if session.state == "idle" then
+    if session.notice == "capture_canceled_before_combat" then
+      return "Capture canceled before combat. No pull snapshot was kept. Start again when ready."
+    end
+    if session.notice == "capture_canceled" then
+      return "Capture canceled. Its pull snapshot was discarded. Start again when ready."
+    end
     return "Ready to configure advanced logging and record one target-dummy attempt."
   end
   if session.state == "starting" then
@@ -313,6 +325,12 @@ local function getStatusText(session, retrySeconds)
         .. valueOrUnknown(integration.stableIssue)
         .. "). Update SimulationCraft and retry."
     end
+    if snapshotAgeSeconds and snapshotAgeSeconds >= 900 then
+      return string.format(
+        "This snapshot is %d minutes old. It will still export; use it for its matching attempt or choose New capture.",
+        math.floor(snapshotAgeSeconds / 60)
+      )
+    end
     if integration.convenienceStatus == "failed" then
       return "/simc was left unchanged ("
         .. valueOrUnknown(integration.convenienceIssue)
@@ -330,12 +348,12 @@ local function getStatusText(session, retrySeconds)
       )
     end
     if session.loggingOwnershipUnknown then
-      return "Combined export ready. Logging ownership was unknown, so Localog left it on. Copy for Localog or /simc."
+      return "Combined export ready. Logging ownership was unknown, so Localog left it on. Copy it, then paste it into Localog's target-dummy import."
     end
     if session.loggingWasPreexisting then
-      return "Combined export ready. Pre-existing combat logging remains on. Copy for Localog or /simc."
+      return "Combined export ready. Pre-existing combat logging remains on. Copy it, then paste it into Localog's target-dummy import."
     end
-    return "Combined export ready and owned combat logging is off. Copy for Localog or use /simc."
+    return "Combined export ready and owned combat logging is off. Copy it, then paste it into Localog's target-dummy import."
   end
 
   if retrySeconds > 0 then
@@ -437,7 +455,11 @@ function UI:Initialize()
   dismiss:SetPoint("RIGHT", evidence, "LEFT", -8, 0)
   dismiss:SetText("Dismiss")
   dismiss:SetScript("OnClick", function()
-    Localog:ResetSession()
+    if Localog.session.state == "ready" then
+      Localog:StartPracticeCapture()
+    else
+      Localog:ResetSession()
+    end
   end)
 
   frame:SetScript("OnUpdate", function(_, elapsed)
@@ -473,7 +495,9 @@ function UI:Refresh()
   session.simcPublicAPI = integration.publicApiAvailable
   local retrySeconds = Localog:GetLoggingRetrySeconds()
   self.frame.state:SetText("State: " .. string.upper(session.state))
-  self.frame.status:SetText(getStatusText(session, retrySeconds))
+  self.frame.status:SetText(
+    getStatusText(session, retrySeconds, Localog:GetSnapshotAgeSeconds())
+  )
 
   self.frame.checks:SetText(table.concat({
     checkLabel(session.advancedLogging, "Advanced logging enabled", "Advanced logging disabled"),
@@ -517,7 +541,10 @@ function UI:Refresh()
       integration.publicApiAvailable and "Copy for Localog" or "Export unavailable"
     )
     setButtonEnabled(self.frame.primary, integration.publicApiAvailable)
+    self.frame.dismiss:SetText("New capture")
+    self.frame.dismiss:Show()
   else
+    self.frame.dismiss:SetText("Dismiss")
     self.frame.dismiss:Show()
     if session.retryAction == "reset" then
       self.frame.primary:SetText("Reset capture")
@@ -551,7 +578,7 @@ function UI:ShowText(text, title)
 end
 
 function UI:ShowEvidence(text)
-  self:ShowText(text, "Localog CA-03 evidence")
+  self:ShowText(text, "Localog CA-06 evidence")
 end
 
 function UI:ShowSnapshot(text)

@@ -17,7 +17,7 @@ local function newProbe()
   }
 end
 
-local function newSession()
+local function newSession(notice)
   return {
     state = "idle",
     loggingOwned = false,
@@ -31,6 +31,7 @@ local function newSession()
     retryAt = nil,
     retryAction = nil,
     cancelRequested = false,
+    notice = notice,
   }
 end
 
@@ -284,6 +285,20 @@ function Localog:GetLoggingRetrySeconds()
   return math.max(0, math.ceil(retryAt - GetTime()))
 end
 
+function Localog:GetSnapshotAgeSeconds()
+  local snapshot = self.probe and self.probe.snapshot
+  if not snapshot or type(snapshot.capturedAt) ~= "number" then
+    return nil
+  end
+
+  local ok, now = pcall(GetServerTime)
+  if not ok or not self:IsAccessible(now) or type(now) ~= "number" then
+    return nil
+  end
+
+  return math.max(0, math.floor(now - snapshot.capturedAt))
+end
+
 function Localog:CallLoggingCombat(desiredState)
   local now = GetTime()
   pruneLoggingCalls(now)
@@ -416,7 +431,7 @@ end
 function Localog:FinalizeAfterLoggingStop()
   self.probe.observing = false
   if self.session.cancelRequested then
-    self:ResetSession()
+    self:ResetSession(self.session.cancelNotice)
     return
   end
 
@@ -513,9 +528,18 @@ function Localog:OnCaptureFinished(result)
 end
 
 function Localog:CancelSession()
+  if self.session.state == "idle" then
+    return
+  end
+
   self.probe.armed = false
   self.probe.observing = false
   self.session.cancelRequested = true
+  if not self.probe.result then
+    self.session.cancelNotice = "capture_canceled_before_combat"
+  else
+    self.session.cancelNotice = "capture_canceled"
+  end
 
   if self.session.loggingOwned then
     if self:RestrictionsCleared() then
@@ -526,12 +550,12 @@ function Localog:CancelSession()
     return
   end
 
-  self:ResetSession()
+  self:ResetSession(self.session.cancelNotice)
 end
 
-function Localog:ResetSession()
+function Localog:ResetSession(notice)
   self.probe = newProbe()
-  self.session = newSession()
+  self.session = newSession(notice)
   self.SimcIntegration:ResetAttemptStatus()
   self.session.simcPublicAPI = self.SimcIntegration:GetProbeStatus()
   self:RefreshUI()

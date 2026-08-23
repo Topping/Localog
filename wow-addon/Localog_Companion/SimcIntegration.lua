@@ -7,6 +7,9 @@ local Integration = {
   convenienceIssue = nil,
   convenienceStatus = "not_attempted",
   stableStatus = "not_attempted",
+  stableExportCount = 0,
+  convenienceExportCount = 0,
+  convenienceDistinctOutputCount = 0,
 }
 Localog.SimcIntegration = Integration
 
@@ -100,11 +103,24 @@ function Integration:ResetAttemptStatus()
   self.stableStatus = "not_attempted"
   self.stableIssue = nil
   self.stableMetrics = nil
+  self.stableExportCount = 0
   self.convenienceStatus = self.convenienceHooked and "awaiting_profile" or "unavailable"
   if self.convenienceHooked then
     self.convenienceIssue = nil
   end
   self.convenienceMetrics = nil
+  self.convenienceExportCount = 0
+  self.convenienceOutputChecksums = {}
+  self.convenienceDistinctOutputCount = 0
+end
+
+function Integration:RecordConvenienceExport(metrics)
+  self.convenienceExportCount = self.convenienceExportCount + 1
+  local checksum = metrics and metrics.outputChecksum
+  if checksum and not self.convenienceOutputChecksums[checksum] then
+    self.convenienceOutputChecksums[checksum] = true
+    self.convenienceDistinctOutputCount = self.convenienceDistinctOutputCount + 1
+  end
 end
 
 function Integration:BuildCombinedExport(profile, snapshotBlock)
@@ -197,6 +213,7 @@ function Integration:GenerateCombinedExport(snapshotBlock)
   self.stableStatus = "complete"
   self.stableIssue = nil
   self.stableMetrics = metrics
+  self.stableExportCount = self.stableExportCount + 1
   return combined
 end
 
@@ -257,6 +274,7 @@ function Integration:HandleSimcFrame(profile)
   self.convenienceStatus = "complete"
   self.convenienceIssue = nil
   self.convenienceMetrics = metrics
+  self:RecordConvenienceExport(metrics)
   Localog:RefreshUI()
 end
 
