@@ -45,6 +45,7 @@ import SpellLink from 'interface/SpellLink';
 
 // prettier-ignore
 export default [
+  change(date(2026, 8, 23), 'Complete Retail verification of the Localog companion logging controller and recovery paths.', Topping),
   change(date(2026, 8, 23), 'Record successful Retail evidence for Localog combat logging ownership control.', Topping),
   change(date(2026, 8, 23), 'Add guided, ownership-safe combat logging control to the Localog companion addon.', Topping),
   change(date(2026, 8, 23), 'Record successful Retail evidence for Localog pull-boundary aura capture.', Topping),

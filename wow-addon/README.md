@@ -34,15 +34,16 @@ Slash commands:
 
 ## CA-01 evidence status
 
-**Core ownership decision: verified.** Two Retail `12.1.0.69404` attempts confirmed the normal logging controller paths. Both reached `ready` after a complete pull-boundary snapshot, with advanced logging and the SimulationCraft public API confirmed.
+**CA-01 decision: verified.** Retail `12.1.0.69404` testing confirmed both normal ownership paths, cancellation, reload safety, restricted-start refusal, and rate-limit recovery. The logging controller and guided state UI meet the CA-01 acceptance criteria.
 
-| Scenario                   | Status   | Sanitized evidence                                                                                                                                                |
-| -------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Companion starts logging   | Verified | `logging_started_by_session=true`; owned stop confirmed by `logging_active=false`; final state `ready`; complete snapshot with 9 readable auras.                  |
-| Logging was already active | Verified | `logging_was_preexisting=true`; `logging_owned=false`; logging remained active in final state `ready`; complete snapshot with 6 readable auras.                   |
-| Cancel before combat       | Pending  | Verify that an owned logger returns to off and the panel returns to `idle`.                                                                                       |
-| Reload with logging active | Pending  | Verify that the reloaded addon initially reports unknown state, then treats logging as pre-existing during a new preflight and never stops it.                    |
-| Rate-limit recovery        | Pending  | If a rate-limit result occurs naturally, verify that the action stays disabled during the countdown and becomes manually retryable without automatic API polling. |
+| Scenario                   | Status   | Sanitized evidence                                                                                                                               |
+| -------------------------- | -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Companion starts logging   | Verified | `logging_started_by_session=true`; owned stop confirmed by `logging_active=false`; final state `ready`; complete snapshot with 9 readable auras. |
+| Logging was already active | Verified | `logging_was_preexisting=true`; `logging_owned=false`; logging remained active in final state `ready`; complete snapshot with 6 readable auras.  |
+| Cancel before combat       | Verified | An owned logger returned to off and the panel returned to `idle`.                                                                                |
+| Reload with logging active | Verified | Reload cleared ownership; a new preflight treated the active logger as pre-existing and did not stop it.                                         |
+| Start while in combat      | Verified | Preflight entered `limited` with `session_issue=restricted_combat`; logging remained unknown and unowned; retry remained available.              |
+| Rate-limit recovery        | Verified | The stop action remained disabled during the countdown, became manually retryable, and completed without automatic API polling.                  |
 
 The owned attempt observed Combat `Activating` 2.824 seconds after arming and Combat `Inactive` 27.835 seconds after arming. The pre-existing attempt observed the same transition sequence at 1.659 and 9.658 seconds. In both attempts, the capture ran during Combat state `Activating`, reported `InCombatLockdown=false`, skipped no secret or invalid entries, and terminated aura iteration normally.
 
