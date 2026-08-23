@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Localog Companion
+## Notes: Guided combat logging with pull-time stat and aura capture for Localog.
+## Author: Topping
+## Version: 0.6.0
+## Dependencies: Simulationcraft
+
+Core.lua
+Protocol.lua
+Capture.lua
+SimcIntegration.lua
+UI.lua

@@ -1,6 +1,7 @@
-import { EventType, type CombatantInfoEvent, type Item } from 'parser/core/Events';
+import { EventType, type Buff, type CombatantInfoEvent, type Item } from 'parser/core/Events';
 
 import type { LocalDiagnostic } from '../../LocalCombatLogParser';
+import type { CompanionCombatantStats } from '../companion/contracts';
 import {
   type ParsedSimcAddonProfile,
   type SimcResult,
@@ -48,6 +49,11 @@ export interface BuildCombatantInfoOptions {
   readonly build: TargetDummyBuildBinding;
   readonly timestamp: number;
   readonly factionChoice?: 1 | 2;
+  readonly pullTimeStats?: CompanionCombatantStats;
+  readonly pullTimeAuras?: {
+    readonly auras: readonly Buff[];
+    readonly diagnostics: readonly LocalDiagnostic[];
+  };
 }
 
 function emptyGearSlot(): Item {
@@ -78,7 +84,7 @@ export function buildCombatantInfoEvent(
           code: 'SIMC_PROFILE_MALFORMED',
           message: `Equipment slot ${item.slot} is not valid for a current Retail character.`,
           recoverable: true,
-          suggestedAction: 'Run /simc again and paste the active Retail character export.',
+          suggestedAction: 'Create a new Localog Companion capture and paste its complete export.',
         },
       };
     }
@@ -131,9 +137,9 @@ export function buildCombatantInfoEvent(
         expansion: 'retail',
         pin: '',
         gear,
-        auras: [],
+        auras: [...(options.pullTimeAuras?.auras ?? [])],
         faction: validated.value.faction,
-        ...zeroStats,
+        ...(options.pullTimeStats ?? zeroStats),
         talentTree: options.talents.talents.map((talent) => ({
           nodeID: talent.nodeId,
           id: talent.entryId,
@@ -143,21 +149,29 @@ export function buildCombatantInfoEvent(
         pvpTalents: [],
       },
       diagnostics: [
-        {
-          line: 0,
-          severity: 'warning',
-          message: 'Live combatant ratings are unavailable in /simc and were defaulted to zero.',
-        },
-        {
-          line: 0,
-          severity: 'warning',
-          message: 'Pull-time combatant auras are unavailable in /simc and were left empty.',
-        },
+        ...(options.pullTimeStats === undefined
+          ? [
+              {
+                line: 0,
+                severity: 'warning' as const,
+                message:
+                  'Live combatant ratings are unavailable in this export and were defaulted to zero.',
+              },
+            ]
+          : []),
+        ...(options.pullTimeAuras?.diagnostics ?? [
+          {
+            line: 0,
+            severity: 'warning' as const,
+            message:
+              'The Localog Companion export did not include a pull-time aura snapshot, so auras were left empty.',
+          },
+        ]),
         {
           line: 0,
           severity: 'warning',
           message:
-            'Item quality, icons, and gem item levels are unavailable in /simc and use display-only defaults.',
+            'Item quality, icons, and gem item levels are unavailable in the Localog Companion export and use display-only defaults.',
         },
       ],
     },

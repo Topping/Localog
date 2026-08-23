@@ -3,6 +3,35 @@ import type { TargetDummyInputRequest } from 'local/localCombatLogProtocol';
 
 import TargetDummyImportInput from './TargetDummyImportInput';
 
+const adler32 = (value: string) => {
+  let s1 = 1;
+  let s2 = 0;
+  for (const byte of new TextEncoder().encode(value)) {
+    s1 = (s1 + byte) % 65521;
+    s2 = (s2 + s1) % 65521;
+  }
+  return ((s2 * 65536 + s1) >>> 0).toString(16);
+};
+
+const COMPANION_PROFILE_BODY = `warrior="Grace"
+### Localog Companion Snapshot
+# localog.schema=2
+# localog.addon_version=0.6.0
+# localog.player_guid=Player-2
+# localog.client_version=12.1.0
+# localog.client_build=69404
+# localog.client_toc=120100
+# localog.captured_at=1
+# localog.trigger=combat_activating
+# localog.completeness=complete
+# localog.skipped_secret=0
+# localog.skipped_invalid=0
+# localog.stats=1944,513,30352,334,0,0,0,1186,1186,1186,98,52,276,276,276,0,1175,34,34,34,1956
+# localog.aura=465,2,Player-2
+### End Localog Companion Snapshot
+`;
+const COMPANION_PROFILE = `${COMPANION_PROFILE_BODY}# Checksum: ${adler32(COMPANION_PROFILE_BODY)}`;
+
 const request: TargetDummyInputRequest = {
   discovery: {
     actors: [
@@ -129,15 +158,17 @@ describe('TargetDummyImportInput', () => {
       screen.queryByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: /Grace.*Training Dummy.*possible/ }));
-    fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
-      target: { value: '# SimulationCraft Addon\nwarrior="Grace"' },
+    fireEvent.change(screen.getByLabelText('Localog Companion export'), {
+      target: { value: COMPANION_PROFILE },
     });
+    expect(screen.getByText('Pull snapshot: stats and 1 aura captured')).toBeInTheDocument();
+    expect(screen.getByText(/Complete capture/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Import selected attempt' }));
 
     expect(onSubmit).toHaveBeenCalledWith({
       playerGuid: 'Player-2',
       sessionId: 'grace-attempt',
-      simcProfile: '# SimulationCraft Addon\nwarrior="Grace"',
+      simcProfile: COMPANION_PROFILE,
       factionChoice: undefined,
     });
   });
@@ -149,7 +180,7 @@ describe('TargetDummyImportInput', () => {
     );
     fireEvent.change(screen.getByLabelText('Character'), { target: { value: 'Player-1' } });
     fireEvent.click(screen.getByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }));
-    fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
+    fireEvent.change(screen.getByLabelText('Localog Companion export'), {
       target: { value: 'complete profile' },
     });
 
@@ -169,7 +200,7 @@ describe('TargetDummyImportInput', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The race does not identify one faction. Choose the character faction.',
     );
-    expect(screen.getByLabelText('SimulationCraft addon export')).toHaveValue('complete profile');
+    expect(screen.getByLabelText('Localog Companion export')).toHaveValue('complete profile');
     fireEvent.change(screen.getByLabelText('Faction'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Import selected attempt' }));
 

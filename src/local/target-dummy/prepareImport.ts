@@ -13,6 +13,7 @@ import {
   readCombatLogLines,
 } from '../LocalCombatLogParser';
 import type { PreparedTargetDummyInput } from '../localCombatLogProtocol';
+import type { CompanionSnapshot } from './companion/contracts';
 import type { TargetDummyActorDiscoveryResult } from './contracts';
 
 const TARGET_DUMMY_BOSS_ID = -1;
@@ -30,6 +31,7 @@ export interface PreparedTargetDummyImport {
     readonly end: number;
   };
   readonly diagnostics: LocalDiagnostic[];
+  readonly companionSnapshot?: CompanionSnapshot;
 }
 
 export interface TargetDummyImportPlan extends PreparedTargetDummyImport {
@@ -80,6 +82,10 @@ export function prepareTargetDummyImport(
   };
 
   const attachedGuids = new Set([prepared.playerGuid, ...prepared.session.targetGuids]);
+  const auraSourceIds = new Set(prepared.combatantInfo.event.auras.map((aura) => aura.source));
+  for (const actor of actors) {
+    if (auraSourceIds.has(actor.id)) attachedGuids.add(actor.guid);
+  }
   for (const owned of discovery.ownedEntities) {
     if (owned.ownerGuid !== prepared.playerGuid) continue;
     attachedGuids.add(owned.guid);
@@ -111,6 +117,9 @@ export function prepareTargetDummyImport(
       end: prepared.session.end,
     },
     diagnostics,
+    ...(prepared.companionSnapshot === undefined
+      ? {}
+      : { companionSnapshot: prepared.companionSnapshot }),
     report: normalization.report(reportId),
     actors,
     normalization,

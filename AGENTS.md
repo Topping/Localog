@@ -35,11 +35,11 @@ Code in these folders may serve another purpose. Do not relocate existing code t
 
 ## Changelog
 
-- Every change must include a new changelog entry before it is considered complete. Do not leave the changelog for the user to add later.
-- For a spec- or class-specific change, add the entry to the relevant `CHANGELOG.tsx` under that spec or class.
-- For shared, core, tooling, documentation, configuration, or multi-spec changes, add the entry to `src/CHANGELOG.tsx`.
-- Add the newest entry at the top of the changelog and follow the existing `change(date(...), ..., contributor)` format, including a concise description and a contributor from `CONTRIBUTORS`.
-- Before finishing, verify that the final diff contains an appropriate `CHANGELOG` file. The pull request check requires an entry even for documentation or configuration-only changes.
+- Changelog entries are encouraged for noteworthy user-facing changes, but they are not required for every change in this downstream fork. Do not add one solely to satisfy inherited mainline process.
+- Use judgment and normally omit changelog entries for routine documentation, configuration, tooling, internal refactors, and work-in-progress implementation slices unless the user requests one or the change is useful release news.
+- When adding a spec- or class-specific entry, use the relevant `CHANGELOG.tsx` under that spec or class. For shared or multi-spec changes, use `src/CHANGELOG.tsx`.
+- Add the newest entry at the top and follow the existing `change(date(...), ..., contributor)` format, including a concise description and a contributor from `CONTRIBUTORS`.
+- If a specific pull request or validation workflow requires a changelog entry, follow that workflow's requirement for that change.
 
 ## Issue and PR Guidelines
 

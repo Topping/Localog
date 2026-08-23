@@ -109,7 +109,7 @@ function factionForRace(race: string, factionChoice?: 1 | 2): SimcResult<1 | 2> 
   }
   return failure(
     'SIMC_FACTION_CHOICE_REQUIRED',
-    `The faction for race ${race} cannot be determined unambiguously from /simc.`,
+    `The faction for race ${race} cannot be determined unambiguously from the Localog Companion export.`,
     'Choose the character faction before importing this target-dummy attempt.',
   );
 }
@@ -130,14 +130,14 @@ export function validateCombatantInfoProfile(
     return failure(
       'SIMC_UNSUPPORTED_BUILD',
       `Target-dummy imports currently require ${TARGET_DUMMY_SCHEMA_ID}.`,
-      'Use a Retail 12.1.0 project-1/log-version-22 capture and matching /simc export.',
+      'Use a Retail 12.1.0 project-1/log-version-22 capture and matching Localog Companion export.',
     );
   }
   if (normalizedIdentity(profile.characterName) !== normalizedLogCharacterName(player.name)) {
     return failure(
       'SIMC_CHARACTER_MISMATCH',
-      'The /simc character does not match the selected combat-log player.',
-      'Select the matching player or paste /simc output from that character.',
+      'The Localog Companion character does not match the selected combat-log player.',
+      'Select the matching player or paste an export captured on that character.',
     );
   }
   const spec = getSpecMetadata(talents.specId);
@@ -148,16 +148,16 @@ export function validateCombatantInfoProfile(
   ) {
     return failure(
       'SIMC_CLASS_SPEC_MISMATCH',
-      'The /simc class or specialization does not match the talent export specialization.',
-      'Activate the intended specialization, run /simc again, and paste the complete output.',
+      'The Localog Companion class or specialization does not match the exported talent specialization.',
+      'Activate the intended specialization, make a new companion capture, and paste its complete export.',
     );
   }
   const missingItemLevel = profile.equipment.find((item) => item.itemLevel === undefined);
   if (missingItemLevel !== undefined) {
     return failure(
       'SIMC_MISSING_ITEM_LEVEL',
-      `The equipped ${missingItemLevel.slot} item has no item level in /simc.`,
-      'Run /simc again and ensure every equipped item includes an item level.',
+      `The equipped ${missingItemLevel.slot} item has no item level in the Localog Companion export.`,
+      'Make a new companion capture and paste its complete export.',
     );
   }
   const faction = factionForRace(profile.race, factionChoice);

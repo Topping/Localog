@@ -3,6 +3,9 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
+import type { LocalActor } from '../../LocalCombatLogParser';
+import type { CompanionSnapshot } from '../companion/contracts';
+import { materializeCompanionAuras } from '../companion/materializer';
 import { parseSimcAddonProfile } from '../simc/parser';
 import type { ParsedSimcAddonProfile } from '../simc/contracts';
 import { buildCombatantInfoEvent } from './builder';
@@ -35,6 +38,29 @@ const AUTHENTIC_COMBATANT_INFO_FIXTURE = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../test-fixtures/derived/encounter-envelope.log',
 );
+const PULL_TIME_STATS = {
+  strength: 1944,
+  agility: 513,
+  stamina: 30352,
+  intellect: 334,
+  dodge: 0,
+  parry: 0,
+  block: 0,
+  critMelee: 1186,
+  critRanged: 1186,
+  critSpell: 1186,
+  speed: 98,
+  leech: 52,
+  hasteMelee: 276,
+  hasteRanged: 276,
+  hasteSpell: 276,
+  avoidance: 0,
+  mastery: 1175,
+  versatilityDamageDone: 34,
+  versatilityHealingDone: 34,
+  versatilityDamageReduction: 34,
+  armor: 1956,
+} as const;
 
 function parsedProfile(): ParsedSimcAddonProfile {
   const result = parseSimcAddonProfile(PROFILE_TEXT);
@@ -107,6 +133,72 @@ describe('target-dummy combatant-info builder', () => {
       expect.stringContaining('auras'),
       expect.stringContaining('Item quality'),
     ]);
+  });
+
+  it('materializes exact known aura sources and reports partial or unresolved records', () => {
+    const snapshot = {
+      schema: 2,
+      addonVersion: '0.6.0',
+      playerGuid: 'Player-1',
+      clientVersion: '12.1.0',
+      clientBuild: 69404,
+      clientToc: 120100,
+      capturedAt: 1,
+      trigger: 'combat_activating',
+      completeness: 'partial',
+      skippedSecret: 1,
+      skippedInvalid: 0,
+      stats: PULL_TIME_STATS,
+      auras: [
+        { spellId: 465, applications: 3, sourceGuid: 'Player-1' },
+        { spellId: 6673, applications: 1, sourceGuid: null },
+        { spellId: 999999, applications: 2, sourceGuid: 'Player-missing' },
+      ],
+    } satisfies CompanionSnapshot;
+    const actors: LocalActor[] = [
+      {
+        id: 17,
+        guid: 'Player-1',
+        name: 'Pølsefatter',
+        flags: 0,
+        friendly: true,
+        fightIds: [],
+        fightDetails: {},
+      },
+    ];
+    const pullTimeAuras = materializeCompanionAuras(snapshot, actors);
+    const result = buildCombatantInfoEvent({
+      ...validOptions(),
+      pullTimeAuras,
+      pullTimeStats: snapshot.stats,
+    });
+
+    expect(pullTimeAuras.summary).toEqual({
+      completeness: 'partial',
+      capturedAuraCount: 3,
+      materializedAuraCount: 1,
+      skippedSecret: 1,
+      skippedInvalid: 0,
+      skippedUnknownSource: 1,
+      skippedUnresolvedSource: 1,
+    });
+    expect(result).toMatchObject({
+      ok: true,
+      value: {
+        event: {
+          strength: 1944,
+          critMelee: 1186,
+          mastery: 1175,
+          armor: 1956,
+          auras: [{ source: 17, ability: 465, stacks: 3 }],
+        },
+        diagnostics: [
+          { message: expect.stringContaining('partial') },
+          { message: expect.stringContaining('no caster was substituted') },
+          { message: expect.stringContaining('Item quality') },
+        ],
+      },
+    });
   });
 
   it('matches the authentic same-build combatant-info sample where /simc fields overlap', () => {

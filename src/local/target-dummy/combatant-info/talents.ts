@@ -66,7 +66,7 @@ function readHeader(value: string): SimcResult<TalentHeader> {
     return talentFailure(
       'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
       "The talent loadout contains characters outside Blizzard's export alphabet.",
-      'Run /simc again and copy the complete talents line without editing it.',
+      'Make a new Localog Companion capture and paste its complete export without editing it.',
     );
   }
   const serializationVersion = reader.read(8);
@@ -80,7 +80,7 @@ function readHeader(value: string): SimcResult<TalentHeader> {
     return talentFailure(
       'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
       'The talent loadout header is incomplete.',
-      'Run /simc again and copy the complete addon output.',
+      'Make a new Localog Companion capture and paste its complete export.',
     );
   }
   const treeHash = (hashBytes as number[])
@@ -144,7 +144,7 @@ export function decodeTalentExport(
       return talentFailure(
         'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
         'The talent loadout ends before every tree node is described.',
-        'Run /simc again and copy the complete addon output.',
+        'Make a new Localog Companion capture and paste its complete export.',
       );
     }
     if (selected === 0) {
@@ -155,7 +155,7 @@ export function decodeTalentExport(
       return talentFailure(
         'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
         'The talent loadout contains an incomplete selected node.',
-        'Run /simc again and copy the complete addon output.',
+        'Make a new Localog Companion capture and paste its complete export.',
       );
     }
     if (purchased === 0) {
@@ -175,7 +175,7 @@ export function decodeTalentExport(
       return talentFailure(
         'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
         'The talent loadout contains an incomplete selected node.',
-        'Run /simc again and copy the complete addon output.',
+        'Make a new Localog Companion capture and paste its complete export.',
       );
     }
     const rank = partiallyRanked === 1 ? header.value.reader.read(6) : node.maxRanks;
@@ -184,7 +184,7 @@ export function decodeTalentExport(
       return talentFailure(
         'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
         `The talent loadout contains an impossible rank for node ${String(node.nodeId)}.`,
-        'Run /simc again and copy the complete addon output.',
+        'Make a new Localog Companion capture and paste its complete export.',
       );
     }
     const choiceIndex = choiceNode === 1 ? header.value.reader.read(2) : 0;
@@ -193,7 +193,7 @@ export function decodeTalentExport(
       return talentFailure(
         'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
         'The talent loadout selects an entry that is not present in the matching tree.',
-        'Run /simc again; if the error remains, update the app for the latest talent tree.',
+        'Make a new Localog Companion capture; if the error remains, update Localog for the latest talent tree.',
       );
     }
     const tieredNode =
@@ -236,7 +236,7 @@ export function decodeTalentExport(
     return talentFailure(
       'SIMC_UNSUPPORTED_TALENT_SERIALIZATION',
       'The talent loadout has unexpected data after the matching talent tree.',
-      'Run /simc again; if the error remains, update the app for the latest talent tree.',
+      'Make a new Localog Companion capture; if the error remains, update Localog for the latest talent tree.',
     );
   }
   return {

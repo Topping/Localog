@@ -114,7 +114,8 @@
     "format": "oxfmt",
     "format:check": "pnpm run format --check",
     "static:check": "node scripts/check-static-architecture.mjs",
-    "target-dummy:measure": "node --expose-gc ./node_modules/tsx/dist/cli.mjs src/local/target-dummy/scripts/measure-import.ts"
+    "target-dummy:measure": "node --expose-gc ./node_modules/tsx/dist/cli.mjs src/local/target-dummy/scripts/measure-import.ts",
+    "addon:package": "node scripts/package-localog-companion.mjs"
   },
   "lint-staged": {
     "*": [

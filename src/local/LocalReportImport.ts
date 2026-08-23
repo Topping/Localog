@@ -24,7 +24,7 @@ export type TargetDummyInputHandler = (
 
 export class TargetDummyInputRequiredError extends Error {
   constructor(readonly request: TargetDummyInputRequest) {
-    super('This target-dummy log needs a player, attempt, and matching /simc profile.');
+    super('This target-dummy log needs a player, attempt, and matching Localog Companion export.');
     this.name = 'TargetDummyInputRequiredError';
   }
 }

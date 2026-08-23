@@ -76,7 +76,7 @@ whole capture through a transformed text file.
 - Inventing a kill, target death, boss health, phase, difficulty, raid size, or zone.
 - Renaming or merging target dummies.
 - Replacing target GUIDs, NPC IDs, hostility flags, or map IDs.
-- Perfect reconstruction of live ratings or pull-time auras that `/simc` does not contain.
+- Inferring live ratings or pull-time auras from combat-event snapshots when no companion capture is supplied.
 - Automatically selecting a low-confidence attempt without showing it to the user.
 - Moving target-dummy concepts into `src/parser/`, `src/analysis/`, or `src/game/raids` unless a later
   validation gate proves that a narrowly scoped change is unavoidable.
@@ -107,8 +107,8 @@ Attempt choices should show character name, start time, duration, target name/co
 label. GUIDs and discovery scores belong in an optional diagnostic disclosure, not normal labels.
 
 Before import, the UI should state the limits of the synthesized metadata: identity, spec, decoded
-talents, and equipment come from `/simc`; unavailable live ratings and pull-time auras use explicit
-defaults.
+talents, and equipment come from `/simc`; protocol v2 companion captures also provide pull-time stats
+and readable auras. Plain `/simc` imports retain explicit defaults for unavailable values.
 
 ### Automatic routing rule
 
@@ -366,6 +366,14 @@ but an equipped item without an item level blocks import and asks the user to re
 - do not infer buffs, food, flasks, temporary enchants, or proc state;
 - emit visible diagnostics that stats and auras were defaulted.
 
+The separately installable companion's first release extends that fallback with protocol v2. At the
+synchronous Combat `Activating` boundary it captures one all-or-nothing stat bundle in Retail
+`COMBATANT_INFO` order: effective strength, agility, stamina, intellect, armor, and the dodge, parry,
+block, crit, speed, leech, haste, avoidance, mastery, and versatility ratings. Every value must be an
+ordinary integer in `0..2147483647`; one inaccessible or invalid value makes the snapshot unavailable
+instead of allowing a partial or zero-filled stat bundle. A valid bound companion snapshot replaces
+the builder's zero stat defaults. Plain `/simc` behavior remains unchanged.
+
 The builder should return typed failures such as profile malformed, character mismatch, class/spec
 mismatch, unsupported build, unsupported talent serialization, missing item level, or faction choice
 required. Never substitute data from another character or from a checked-in example payload.
@@ -539,7 +547,8 @@ entry in this document.
 - Analysis receives exactly one complete combatant-info event for the selected player.
 - Spec, talent ranks, equipped item IDs/levels, enchants, bonuses, and gems match the accepted SimC
   profile.
-- Unavailable live stats and auras are explicitly reported as defaulted.
+- A valid protocol v2 companion snapshot supplies exact pull-time stats; otherwise unavailable live
+  stats and auras are explicitly reported as defaulted.
 - No unavailable combatant-info value is inferred from advanced event snapshots.
 - Equipped items missing item level block import; legitimate empty equipment slots retain their
   indices.
