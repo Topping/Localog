@@ -142,6 +142,7 @@ async function prepareTargetDummy(
     paused.route.discovery,
     paused.route.localActors,
     prepared.value,
+    paused.route.sourceRange,
   );
   await new Promise<void>((resolve) => {
     acknowledgements.set(-1, resolve);

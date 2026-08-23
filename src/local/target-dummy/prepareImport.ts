@@ -5,6 +5,7 @@ import type Report from 'parser/core/Report';
 
 import {
   decodeCombatLogLine,
+  type CombatLogSourceRange,
   type LocalActor,
   LocalCombatLogDiscovery,
   type LocalDiagnostic,
@@ -38,6 +39,7 @@ export interface TargetDummyImportPlan extends PreparedTargetDummyImport {
   readonly report: Report;
   readonly actors: LocalActor[];
   readonly normalization: LocalCombatLogDiscovery;
+  readonly sourceRange?: CombatLogSourceRange;
 }
 
 const cloneActor = (actor: LocalActor): LocalActor => ({
@@ -51,6 +53,7 @@ export function prepareTargetDummyImport(
   discovery: TargetDummyActorDiscoveryResult,
   localActors: readonly LocalActor[],
   prepared: PreparedTargetDummyInput,
+  sourceRange?: CombatLogSourceRange,
 ): TargetDummyImportPlan {
   const fight: WCLFight = {
     id: TARGET_DUMMY_FIGHT_ID,
@@ -123,6 +126,7 @@ export function prepareTargetDummyImport(
     report: normalization.report(reportId),
     actors,
     normalization,
+    ...(sourceRange === undefined ? {} : { sourceRange }),
   };
 }
 
@@ -133,6 +137,9 @@ export async function normalizePreparedTargetDummyImport(
   signal?: AbortSignal,
   progress?: (value: number) => void,
 ): Promise<void> {
+  const source = plan.sourceRange
+    ? file.slice(plan.sourceRange.startByte, plan.sourceRange.endByte)
+    : file;
   let batch: AnyEvent[] = [plan.combatantInfo];
   let batchBytes = 0;
   const flush = async () => {
@@ -140,7 +147,7 @@ export async function normalizePreparedTargetDummyImport(
     batch = [];
   };
 
-  for await (const record of readCombatLogLines(file, signal)) {
+  for await (const record of readCombatLogLines(source, signal)) {
     const fields = decodeCombatLogLine(record.line);
     const timestamp = parseCombatLogTimestamp(fields[0]);
     if (
@@ -160,7 +167,7 @@ export async function normalizePreparedTargetDummyImport(
       await flush();
       batchBytes = 0;
     }
-    progress?.(file.size ? Math.min(1, record.bytesRead / file.size) : 1);
+    progress?.(source.size ? Math.min(1, record.bytesRead / source.size) : 1);
   }
   await flush();
   progress?.(1);

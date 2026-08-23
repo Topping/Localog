@@ -118,8 +118,121 @@ export function parseCombatLogTimestamp(value: string): number | null {
       )
     : null;
 }
+
+export interface CombatLogSourceRange {
+  readonly startByte: number;
+  readonly endByte: number;
+}
+
+const COMBAT_LOG_VERSION_MARKER = new TextEncoder().encode('COMBAT_LOG_VERSION');
+const SESSION_SEARCH_BLOCK_BYTES = 64 * 1024;
+const SESSION_HEADER_CONTEXT_BYTES = 32 * 1024;
+
+function abortIfRequested(signal?: AbortSignal): void {
+  if (signal?.aborted) throw new DOMException('Import cancelled', 'AbortError');
+}
+
+function lastByteSequenceIndex(bytes: Uint8Array, sequence: Uint8Array, fromIndex: number): number {
+  for (let index = Math.min(fromIndex, bytes.length - sequence.length); index >= 0; index -= 1) {
+    let matches = true;
+    for (let offset = 0; offset < sequence.length; offset += 1) {
+      if (bytes[index + offset] !== sequence[offset]) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return index;
+  }
+  return -1;
+}
+
+async function validateCombatLogVersionCandidate(
+  source: Blob,
+  candidateByte: number,
+  signal?: AbortSignal,
+): Promise<number | undefined> {
+  const contextStart = Math.max(0, candidateByte - SESSION_HEADER_CONTEXT_BYTES);
+  const contextEnd = Math.min(
+    source.size,
+    candidateByte + COMBAT_LOG_VERSION_MARKER.length + SESSION_HEADER_CONTEXT_BYTES,
+  );
+  abortIfRequested(signal);
+  const context = new Uint8Array(await source.slice(contextStart, contextEnd).arrayBuffer());
+  abortIfRequested(signal);
+  const candidateIndex = candidateByte - contextStart;
+
+  let lineStart = candidateIndex;
+  while (lineStart > 0 && context[lineStart - 1] !== 0x0a) lineStart -= 1;
+  if (lineStart === 0 && contextStart !== 0) return undefined;
+
+  let lineEnd = candidateIndex + COMBAT_LOG_VERSION_MARKER.length;
+  while (lineEnd < context.length && context[lineEnd] !== 0x0a) lineEnd += 1;
+  if (lineEnd === context.length && contextEnd !== source.size) return undefined;
+
+  const line = new TextDecoder().decode(context.subarray(lineStart, lineEnd)).replace(/\r$/, '');
+  const fields = decodeCombatLogLine(line);
+  const event = fields[0] === 'COMBAT_LOG_VERSION' ? fields[0] : fields[1];
+  const unquotedEvent =
+    /^(?:\uFEFF)?(?:COMBAT_LOG_VERSION(?:,|$)|[^,\r\n]+,COMBAT_LOG_VERSION(?:,|$)|\d{1,2}\/\d{1,2}(?:\/\d{4})? \d{2}:\d{2}:\d{2}\.\d{3,4}\s+COMBAT_LOG_VERSION(?:,|$))/u.test(
+      line,
+    );
+  return event === 'COMBAT_LOG_VERSION' && unquotedEvent ? contextStart + lineStart : undefined;
+}
+
+/**
+ * Locates the newest physical logging session without retaining the file or
+ * source lines. Sources without Blob slicing retain the legacy whole-source
+ * behavior (primarily useful for lightweight stream adapters).
+ */
+export async function findNewestCombatLogSessionRange(
+  source: Blob,
+  signal?: AbortSignal,
+  progress?: (value: number) => void,
+): Promise<CombatLogSourceRange> {
+  const fullRange = { startByte: 0, endByte: source.size };
+  if (source.size === 0 || typeof source.slice !== 'function') {
+    progress?.(1);
+    return fullRange;
+  }
+
+  let blockEnd = source.size;
+  let scannedBytes = 0;
+  while (blockEnd > 0) {
+    abortIfRequested(signal);
+    const blockStart = Math.max(0, blockEnd - SESSION_SEARCH_BLOCK_BYTES);
+    const readEnd = Math.min(source.size, blockEnd + COMBAT_LOG_VERSION_MARKER.length - 1);
+    const bytes = new Uint8Array(await source.slice(blockStart, readEnd).arrayBuffer());
+    abortIfRequested(signal);
+
+    let candidateIndex = lastByteSequenceIndex(
+      bytes,
+      COMBAT_LOG_VERSION_MARKER,
+      blockEnd - blockStart - 1,
+    );
+    while (candidateIndex !== -1) {
+      const lineStart = await validateCombatLogVersionCandidate(
+        source,
+        blockStart + candidateIndex,
+        signal,
+      );
+      if (lineStart !== undefined) {
+        progress?.(1);
+        return { startByte: lineStart, endByte: source.size };
+      }
+      candidateIndex = lastByteSequenceIndex(bytes, COMBAT_LOG_VERSION_MARKER, candidateIndex - 1);
+    }
+
+    scannedBytes += blockEnd - blockStart;
+    progress?.(Math.min(1, scannedBytes / source.size));
+    blockEnd = blockStart;
+  }
+
+  progress?.(1);
+  return fullRange;
+}
+
 export async function* readCombatLogLines(
-  file: File,
+  file: Blob,
   signal?: AbortSignal,
 ): AsyncGenerator<{ line: string; lineNumber: number; bytesRead: number }> {
   const reader = file.stream().getReader();
