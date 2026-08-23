@@ -1,8 +1,8 @@
 # Localog Companion
 
-`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging and captures readable helpful player auras at the combat restriction boundary. A later implementation slice will append that snapshot to a SimulationCraft profile for one-copy import.
+`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and serializes a bounded protocol v1 snapshot. A later implementation slice will append that snapshot to a SimulationCraft profile for one-copy import.
 
-The current `0.2.0` build implements CA-01: a memory-only recording session, advanced-combat-logging preflight, ownership-safe combat log control, the proven CA-00 aura capture, and a guided status panel. It does not yet generate the combined `/simc` export. No session or character data survives `/reload`.
+The current `0.3.0` build implements CA-02: a memory-only recording session, ownership-safe combat log control, synchronous pull-boundary aura reduction, deterministic normalization, and the exact comment-only snapshot block defined by [the canonical protocol](./PROTOCOL.md). It does not yet generate the combined `/simc` export. No session or character data survives `/reload`.
 
 ## Install
 
@@ -20,7 +20,7 @@ The addon declares SimulationCraft as a required dependency so its public API ha
 3. Confirm that the panel reaches **ARMED** and shows advanced logging, combat logging, and the SimulationCraft API as available.
 4. Begin a normal target-dummy pull. The panel should change to **CAPTURED** at the pull boundary.
 5. Leave combat normally. If Localog started logging, the panel will stop it after restrictions clear and then show **READY**. If logging was already active, Localog leaves it active and says so.
-6. Click **Copy evidence** and share the sanitized CA-01 result when testing this build.
+6. In **READY**, click **Copy snapshot block** to inspect the complete protocol v1 block. Use **Copy evidence** for a sanitized CA-02 result that omits character and aura identifiers.
 
 The panel treats an unknown `LoggingCombat` result as rate limiting, shows a ten-second recovery countdown, and requires an explicit retry. It never assumes ownership after an unknown result. If an owned stop cannot be confirmed, **Stop combat logging** remains available; **Dismiss** intentionally abandons the in-memory session so logging must then be checked manually.
 
@@ -30,7 +30,20 @@ Slash commands:
 - `/localog start` starts the same hardware-initiated preflight as the panel button (`arm` remains an alias).
 - `/localog retry` retries a rate-limited preflight or logging stop.
 - `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
-- `/localog copy` opens and selects sanitized evidence.
+- `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
+- `/localog copy` opens and selects sanitized evidence (`evidence` is an alias).
+
+## CA-02 test build
+
+CA-02 needs Retail verification before it is complete. Test a normal attempt with both self-cast and externally sourced helpful auras if practical:
+
+1. Reach **READY**, click **Copy snapshot block**, and confirm it begins and ends with the exact protocol markers.
+2. Confirm scalar fields appear once and in documented order, followed only by zero or more aura lines.
+3. Confirm aura lines are numerically sorted by spell ID; equal spell IDs must sort by source GUID and must not repeat the same `(spell ID, source GUID)` pair.
+4. Confirm missing/zero application counts appear as `1`, all counts are in `1..255`, and unavailable sources appear as `-`.
+5. Use **Copy evidence** and confirm `protocol_serialized=true`, `capture_status=complete` or `partial`, and sensible aura/byte/skip counts.
+
+The raw snapshot contains the player GUID, source GUIDs, spell IDs, build metadata, and capture time. Redact those identifiers before sharing it publicly. Combined SimulationCraft export and checksum handling arrive in CA-03.
 
 ## CA-01 evidence status
 

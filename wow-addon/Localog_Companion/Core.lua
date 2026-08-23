@@ -425,6 +425,7 @@ function Localog:FinalizeAfterLoggingStop()
 
   if self.probe.result
     and (self.probe.result.status == "complete" or self.probe.result.status == "partial")
+    and type(self.probe.result.protocolBlock) == "string"
   then
     self.session.state = "ready"
     self.session.issue = nil
@@ -613,7 +614,9 @@ function Localog:RegisterSlashCommands()
       else
         self:RetryPreflight()
       end
-    elseif command == "copy" then
+    elseif command == "snapshot" then
+      self:ShowSnapshot()
+    elseif command == "copy" or command == "evidence" then
       self:ShowEvidence()
     else
       self:ShowUI()
@@ -631,6 +634,27 @@ function Localog:ShowEvidence()
   if self.UI and self.UI.ShowEvidence then
     self.UI:ShowEvidence(self:BuildEvidenceText())
   end
+end
+
+function Localog:ShowSnapshot()
+  local snapshot = self.probe.snapshot
+  if self.session.state ~= "ready" then
+    self.session.issue = "snapshot_not_ready"
+    self:RefreshUI()
+    self:ShowUI()
+    return false
+  end
+  if not snapshot or type(snapshot.protocolBlock) ~= "string" then
+    self:SetLimited("snapshot_block_unavailable", "reset")
+    self:ShowUI()
+    return false
+  end
+  if self.UI and self.UI.ShowSnapshot then
+    self.UI:ShowSnapshot(snapshot.protocolBlock)
+    return true
+  end
+
+  return false
 end
 
 frame:SetScript("OnEvent", function(_, event, ...)

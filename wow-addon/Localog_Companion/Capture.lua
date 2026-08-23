@@ -3,7 +3,7 @@ local _, Localog = ...
 local Capture = {}
 Localog.Capture = Capture
 
-local MAX_AURAS = 255
+local MAX_AURA_INDEX = Localog.Protocol.maximumAuras + 1
 local HELPFUL_FILTER = "HELPFUL"
 
 local function isIntegerInRange(value, minimum, maximum)
@@ -46,7 +46,7 @@ local function readSourceGUID(aura)
   if not ok or not Localog:IsAccessible(sourceGUID) or sourceGUID == nil then
     return "-"
   end
-  if type(sourceGUID) ~= "string" then
+  if type(sourceGUID) ~= "string" or not Localog.Protocol:IsSourceGUID(sourceGUID) then
     return "-"
   end
 
@@ -70,9 +70,10 @@ local function reduceAura(aura)
   if applications == nil or applications == 0 then
     applications = 1
   end
-  if not isIntegerInRange(applications, 1, 255) then
+  if not isIntegerInRange(applications, 1, 9007199254740991) then
     return nil, "invalid"
   end
+  applications = math.min(applications, 255)
 
   return {
     spellID = spellID,
@@ -81,20 +82,61 @@ local function reduceAura(aura)
   }
 end
 
-local function snapshotHelpfulAuras()
+local function readPlayerGUID()
+  local ok, playerGUID = pcall(UnitGUID, "player")
+  if not ok
+    or not Localog:IsAccessible(playerGUID)
+    or not Localog.Protocol:IsPlayerGUID(playerGUID)
+  then
+    return nil
+  end
+
+  return playerGUID
+end
+
+local function readCaptureTime()
+  local ok, capturedAt = pcall(GetServerTime)
+  if not ok
+    or not Localog:IsAccessible(capturedAt)
+    or not isIntegerInRange(capturedAt, 1, 9007199254740991)
+  then
+    return nil
+  end
+
+  return capturedAt
+end
+
+local function unavailable(reason, details)
+  local result = details or {}
+  result.status = "unavailable"
+  result.reason = reason
+  result.auras = nil
+  result.protocolBlock = nil
+  return result
+end
+
+local function snapshotHelpfulAuras(context)
   local startedMs = debugprofilestop()
+  local playerGUID = readPlayerGUID()
+  if not playerGUID then
+    return unavailable("player_guid_unavailable")
+  end
+
+  local capturedAt = readCaptureTime()
+  if not capturedAt then
+    return unavailable("capture_time_unavailable")
+  end
+
   local shouldAurasBeSecret = safePredicate(C_Secrets.ShouldAurasBeSecret)
   if shouldAurasBeSecret == nil then
-    return { status = "unavailable", reason = "aura_secrecy_predicate_failed" }
+    return unavailable("aura_secrecy_predicate_failed")
   end
 
   local indexPredicate = C_Secrets.ShouldUnitAuraIndexBeSecret
   if shouldAurasBeSecret and not indexPredicate then
-    return {
-      status = "unavailable",
-      reason = "missing_index_secrecy_predicate",
+    return unavailable("missing_index_secrecy_predicate", {
       shouldAurasBeSecret = true,
-    }
+    })
   end
 
   local auras = {}
@@ -102,34 +144,39 @@ local function snapshotHelpfulAuras()
   local skippedInvalid = 0
   local terminatorIndex = nil
 
-  for index = 1, MAX_AURAS do
+  for index = 1, MAX_AURA_INDEX do
     if indexPredicate then
       local indexIsSecret = safePredicate(indexPredicate, "player", index, HELPFUL_FILTER)
       if indexIsSecret == nil then
-        return {
-          status = "unavailable",
-          reason = "index_secrecy_predicate_failed",
+        return unavailable("index_secrecy_predicate_failed", {
           failedIndex = index,
           shouldAurasBeSecret = shouldAurasBeSecret,
           skippedSecret = skippedSecret,
           skippedInvalid = skippedInvalid,
           elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
-        }
+        })
       end
       if indexIsSecret then
         skippedSecret = skippedSecret + 1
-      else
-        local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", index, HELPFUL_FILTER)
-        if not ok then
-          return {
-            status = "unavailable",
-            reason = "indexed_aura_query_failed",
+        if skippedSecret > 255 then
+          return unavailable("skipped_count_exceeded", {
             failedIndex = index,
             shouldAurasBeSecret = shouldAurasBeSecret,
             skippedSecret = skippedSecret,
             skippedInvalid = skippedInvalid,
             elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
-          }
+          })
+        end
+      else
+        local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", index, HELPFUL_FILTER)
+        if not ok then
+          return unavailable("indexed_aura_query_failed", {
+            failedIndex = index,
+            shouldAurasBeSecret = shouldAurasBeSecret,
+            skippedSecret = skippedSecret,
+            skippedInvalid = skippedInvalid,
+            elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
+          })
         end
         if not Localog:IsAccessible(aura) then
           skippedSecret = skippedSecret + 1
@@ -145,20 +192,27 @@ local function snapshotHelpfulAuras()
           else
             skippedInvalid = skippedInvalid + 1
           end
+          if skippedSecret > 255 or skippedInvalid > 255 then
+            return unavailable("skipped_count_exceeded", {
+              failedIndex = index,
+              shouldAurasBeSecret = shouldAurasBeSecret,
+              skippedSecret = skippedSecret,
+              skippedInvalid = skippedInvalid,
+              elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
+            })
+          end
         end
       end
     else
       local ok, aura = pcall(C_UnitAuras.GetAuraDataByIndex, "player", index, HELPFUL_FILTER)
       if not ok then
-        return {
-          status = "unavailable",
-          reason = "indexed_aura_query_failed",
+        return unavailable("indexed_aura_query_failed", {
           failedIndex = index,
           shouldAurasBeSecret = shouldAurasBeSecret,
           skippedSecret = skippedSecret,
           skippedInvalid = skippedInvalid,
           elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
-        }
+        })
       end
       if not Localog:IsAccessible(aura) then
         skippedSecret = skippedSecret + 1
@@ -174,35 +228,77 @@ local function snapshotHelpfulAuras()
         else
           skippedInvalid = skippedInvalid + 1
         end
+        if skippedSecret > 255 or skippedInvalid > 255 then
+          return unavailable("skipped_count_exceeded", {
+            failedIndex = index,
+            shouldAurasBeSecret = shouldAurasBeSecret,
+            skippedSecret = skippedSecret,
+            skippedInvalid = skippedInvalid,
+            elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
+          })
+        end
       end
     end
   end
 
   if not terminatorIndex then
-    return {
-      status = "unavailable",
-      reason = "iteration_bound_reached",
+    return unavailable("iteration_bound_reached", {
       shouldAurasBeSecret = shouldAurasBeSecret,
       skippedSecret = skippedSecret,
       skippedInvalid = skippedInvalid,
       elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
-    }
+    })
+  end
+
+  local normalizedAuras, normalizationReason, duplicatesCollapsed =
+    Localog.Protocol:NormalizeAuras(auras)
+  if not normalizedAuras then
+    return unavailable("normalization_" .. normalizationReason, {
+      shouldAurasBeSecret = shouldAurasBeSecret,
+      skippedSecret = skippedSecret,
+      skippedInvalid = skippedInvalid,
+      terminatorIndex = terminatorIndex,
+      elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
+    })
   end
 
   local status = (skippedSecret > 0 or skippedInvalid > 0) and "partial" or "complete"
-  return {
+  local snapshot = {
     status = status,
     reason = nil,
-    auras = auras,
-    capturedAt = GetServerTime(),
+    addonVersion = context and context.addonVersion,
+    playerGUID = playerGUID,
+    clientVersion = context and context.clientVersion,
+    clientBuild = context and context.clientBuild,
+    clientToc = context and context.clientToc,
+    capturedAt = capturedAt,
+    trigger = "combat_activating",
+    auras = normalizedAuras,
     skippedSecret = skippedSecret,
     skippedInvalid = skippedInvalid,
+    duplicatesCollapsed = duplicatesCollapsed,
     terminatorIndex = terminatorIndex,
     shouldAurasBeSecret = shouldAurasBeSecret,
     elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
     restrictions = Localog:ObserveRestrictionStates(),
     inCombatLockdown = InCombatLockdown() == true,
   }
+
+  local protocolBlock, serializationReason =
+    Localog.Protocol:SerializeSnapshot(snapshot, capturedAt)
+  if not protocolBlock then
+    return unavailable("serialization_" .. serializationReason, {
+      shouldAurasBeSecret = shouldAurasBeSecret,
+      skippedSecret = skippedSecret,
+      skippedInvalid = skippedInvalid,
+      terminatorIndex = terminatorIndex,
+      elapsedMs = math.max(0, math.floor(debugprofilestop() - startedMs)),
+    })
+  end
+  snapshot.protocolBlock = protocolBlock
+  snapshot.protocolBytes = #protocolBlock
+
+  return snapshot
 end
 
 function Capture:OnRestrictionStateChanged(restrictionType, restrictionState)
@@ -219,7 +315,7 @@ function Capture:OnRestrictionStateChanged(restrictionType, restrictionState)
     return
   end
 
-  local result = snapshotHelpfulAuras()
+  local result = snapshotHelpfulAuras(probe.context)
   probe.result = result
   probe.armed = false
   if result.status == "complete" or result.status == "partial" then

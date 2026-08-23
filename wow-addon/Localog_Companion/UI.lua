@@ -68,13 +68,32 @@ local function getLoggingCheck(session)
   return "|cffff5050NO|r  Combat logging off"
 end
 
+local function getSnapshotCheck(result)
+  if not result then
+    return "|cffff5050NO|r  Snapshot not captured"
+  end
+  if result.status == "complete" then
+    return string.format("|cff40c040OK|r  Complete snapshot (%d auras)", #result.auras)
+  end
+  if result.status == "partial" then
+    return string.format(
+      "|cffffc040--|r  Partial snapshot (%d auras; %d secret, %d invalid skipped)",
+      #result.auras,
+      result.skippedSecret,
+      result.skippedInvalid
+    )
+  end
+
+  return "|cffff5050NO|r  Snapshot unavailable"
+end
+
 function Localog:BuildEvidenceText()
   local probe = self.probe
   local session = self.session
   local context = probe.context or self:GetClientContext()
   local enums = self:GetRestrictionEnums()
   local lines = {
-    "Localog Companion CA-01 evidence",
+    "Localog Companion CA-02 evidence",
     "addon_version=" .. valueOrUnknown(context.addonVersion),
     "client_version=" .. valueOrUnknown(context.clientVersion),
     "client_build=" .. valueOrUnknown(context.clientBuild),
@@ -141,6 +160,7 @@ function Localog:BuildEvidenceText()
   lines[#lines + 1] = "captured_at=" .. valueOrUnknown(result.capturedAt)
   lines[#lines + 1] = "should_auras_be_secret=" .. valueOrUnknown(result.shouldAurasBeSecret)
   lines[#lines + 1] = "readable_auras=" .. valueOrUnknown(result.auras and #result.auras or 0)
+  lines[#lines + 1] = "duplicates_collapsed=" .. valueOrUnknown(result.duplicatesCollapsed)
   lines[#lines + 1] = "skipped_secret=" .. valueOrUnknown(result.skippedSecret)
   lines[#lines + 1] = "skipped_invalid=" .. valueOrUnknown(result.skippedInvalid)
   lines[#lines + 1] = "terminator_index=" .. valueOrUnknown(result.terminatorIndex)
@@ -149,6 +169,9 @@ function Localog:BuildEvidenceText()
   lines[#lines + 1] = "capture_restrictions=" .. restrictionSummary(result.restrictions)
   lines[#lines + 1] = "in_combat_lockdown_during_capture="
     .. valueOrUnknown(result.inCombatLockdown)
+  lines[#lines + 1] = "protocol_schema=" .. valueOrUnknown(Localog.Protocol.schema)
+  lines[#lines + 1] = "protocol_serialized=" .. valueOrUnknown(result.protocolBlock ~= nil)
+  lines[#lines + 1] = "protocol_bytes=" .. valueOrUnknown(result.protocolBytes)
 
   return table.concat(lines, "\n")
 end
@@ -173,7 +196,7 @@ local function createEvidenceFrame()
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Localog CA-01 evidence")
+  title:SetText("Localog CA-02 evidence")
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
@@ -193,6 +216,7 @@ local function createEvidenceFrame()
   scroll:SetScrollChild(editBox)
 
   frame.editBox = editBox
+  frame.title = title
   frame:Hide()
   return frame
 end
@@ -217,6 +241,9 @@ local function getStatusText(session, retrySeconds)
     if session.issue then
       return "The pull-boundary snapshot was unavailable. Finish combat so logging can be handled safely."
     end
+    if Localog.probe.result and Localog.probe.result.status == "partial" then
+      return "A partial pull snapshot was captured. Finish combat to review the exact skipped counts."
+    end
     return "Snapshot captured. Finish combat; owned logging will stop after restrictions clear."
   end
   if session.state == "stopping" then
@@ -232,13 +259,22 @@ local function getStatusText(session, retrySeconds)
     return "Restrictions are still active. Finish combat before owned logging can be stopped."
   end
   if session.state == "ready" then
+    local result = Localog.probe.result
+    if result and result.status == "partial" then
+      return string.format(
+        "Partial snapshot ready: %d readable auras; %d secret and %d invalid entries skipped.",
+        #result.auras,
+        result.skippedSecret,
+        result.skippedInvalid
+      )
+    end
     if session.loggingOwnershipUnknown then
-      return "Capture ready. Combat logging ownership was unknown, so Localog left it on."
+      return "Snapshot block ready. Combat logging ownership was unknown, so Localog left it on."
     end
     if session.loggingWasPreexisting then
-      return "Capture ready. Pre-existing combat logging remains on. Combined export arrives in CA-02/CA-03."
+      return "Snapshot block ready. Pre-existing combat logging remains on. Combined export arrives in CA-03."
     end
-    return "Capture ready and owned combat logging is off. Combined export arrives in CA-02/CA-03."
+    return "Snapshot block ready and owned combat logging is off. Combined export arrives in CA-03."
   end
 
   if retrySeconds > 0 then
@@ -315,7 +351,7 @@ function UI:Initialize()
     elseif session.state == "armed" or session.state == "captured" then
       Localog:CancelSession()
     elseif session.state == "ready" then
-      Localog:StartPracticeCapture()
+      Localog:ShowSnapshot()
     elseif session.state == "stopping" then
       Localog:RetryStop()
     elseif session.state == "limited" then
@@ -375,12 +411,10 @@ function UI:Refresh()
   self.frame.state:SetText("State: " .. string.upper(session.state))
   self.frame.status:SetText(getStatusText(session, retrySeconds))
 
-  local snapshotReady = probe.result ~= nil
-    and (probe.result.status == "complete" or probe.result.status == "partial")
   self.frame.checks:SetText(table.concat({
     checkLabel(session.advancedLogging, "Advanced logging enabled", "Advanced logging disabled"),
     getLoggingCheck(session),
-    checkLabel(snapshotReady, "Pull-boundary snapshot captured", "Snapshot not captured"),
+    getSnapshotCheck(probe.result),
     checkLabel(session.simcPublicAPI, "SimulationCraft API available", "SimulationCraft API unavailable"),
   }, "\n"))
 
@@ -406,7 +440,7 @@ function UI:Refresh()
       self.frame.dismiss:Show()
     end
   elseif session.state == "ready" then
-    self.frame.primary:SetText("Start another capture")
+    self.frame.primary:SetText("Copy snapshot block")
     setButtonEnabled(self.frame.primary, true)
   else
     self.frame.dismiss:Show()
@@ -427,15 +461,24 @@ function UI:Show()
   end
 end
 
-function UI:ShowEvidence(text)
+function UI:ShowText(text, title)
   if not self.evidenceFrame then
     return
   end
 
+  self.evidenceFrame.title:SetText(title)
   local _, lineBreaks = string.gsub(text, "\n", "")
   self.evidenceFrame.editBox:SetHeight(math.max(380, (lineBreaks + 1) * 15))
   self.evidenceFrame.editBox:SetText(text)
   self.evidenceFrame:Show()
   self.evidenceFrame.editBox:SetFocus()
   self.evidenceFrame.editBox:HighlightText()
+end
+
+function UI:ShowEvidence(text)
+  self:ShowText(text, "Localog CA-02 evidence")
+end
+
+function UI:ShowSnapshot(text)
+  self:ShowText(text, "Localog protocol v1 snapshot")
 end
