@@ -32,15 +32,19 @@ Slash commands:
 - `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
 - `/localog copy` opens and selects sanitized evidence.
 
-## In-game verification requested for CA-01
+## CA-01 evidence status
 
-The first client pass should cover these ownership paths:
+**Core ownership decision: verified.** Two Retail `12.1.0.69404` attempts confirmed the normal logging controller paths. Both reached `ready` after a complete pull-boundary snapshot, with advanced logging and the SimulationCraft public API confirmed.
 
-1. Start with combat logging off. Complete one pull and verify the panel progresses `idle -> armed -> captured -> ready`, with `logging_started_by_session=true` and `logging_active=false` at ready.
-2. Turn combat logging on before starting. Complete one pull and verify `logging_was_preexisting=true`, `logging_owned=false`, and combat logging remains on at ready.
-3. Start a capture and cancel before combat. If Localog owned logging, verify it returns to off and the panel returns to idle.
-4. Use `/reload` while logging is on, open the panel, and verify it reports logging as unknown until a new preflight; a new preflight must treat the active logger as pre-existing and never stop it.
-5. If a rate-limit result occurs naturally, verify the action is disabled during the countdown and becomes retryable without automatic polling.
+| Scenario                   | Status   | Sanitized evidence                                                                                                                                                |
+| -------------------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Companion starts logging   | Verified | `logging_started_by_session=true`; owned stop confirmed by `logging_active=false`; final state `ready`; complete snapshot with 9 readable auras.                  |
+| Logging was already active | Verified | `logging_was_preexisting=true`; `logging_owned=false`; logging remained active in final state `ready`; complete snapshot with 6 readable auras.                   |
+| Cancel before combat       | Pending  | Verify that an owned logger returns to off and the panel returns to `idle`.                                                                                       |
+| Reload with logging active | Pending  | Verify that the reloaded addon initially reports unknown state, then treats logging as pre-existing during a new preflight and never stops it.                    |
+| Rate-limit recovery        | Pending  | If a rate-limit result occurs naturally, verify that the action stays disabled during the countdown and becomes manually retryable without automatic API polling. |
+
+The owned attempt observed Combat `Activating` 2.824 seconds after arming and Combat `Inactive` 27.835 seconds after arming. The pre-existing attempt observed the same transition sequence at 1.659 and 9.658 seconds. In both attempts, the capture ran during Combat state `Activating`, reported `InCombatLockdown=false`, skipped no secret or invalid entries, and terminated aura iteration normally.
 
 The evidence block contains state, ownership, advanced-logging status, retry status, restriction transitions, and aggregate aura results. It excludes character names, player GUIDs, source GUIDs, and spell IDs.
 
