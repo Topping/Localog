@@ -1,4 +1,5 @@
 import { HTMLAttributes, JSX, useMemo } from 'react';
+import { publicAsset } from 'config/staticHosting';
 import useTooltip from './useTooltip';
 import { useReport } from './report/context/ReportContext';
 import type Unit from 'parser/core/Unit';
@@ -37,10 +38,14 @@ export default function ActorLink({
   }
 
   if (isPlayer) {
-    // we manually set up the icon because we need to use the `/specs/` folder
+    // we manually set up the icon because we need to use the `specs/` folder
     return (
       <span className={actor.type} {...rest}>
-        <img src={`/specs/${actor.icon}.jpg`} className={'game icon'} alt={actor.icon} />{' '}
+        <img
+          src={publicAsset(`specs/${actor.icon}.jpg`)}
+          className={'game icon'}
+          alt={actor.icon}
+        />{' '}
         {children ?? actor.name}
       </span>
     );

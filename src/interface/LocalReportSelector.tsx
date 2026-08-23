@@ -1,4 +1,4 @@
-import { DragEvent, useEffect, useRef, useState } from 'react';
+import { DragEvent, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   importLocalCombatLog,
@@ -28,25 +28,8 @@ export default function LocalReportSelector() {
   const [targetDummySubmitting, setTargetDummySubmitting] = useState(false);
   const [error, setError] = useState('');
   const [storageWarning, setStorageWarning] = useState('');
-  const [persistent, setPersistent] = useState<boolean | null>(null);
   const [lastFile, setLastFile] = useState<File | null>(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!navigator.storage?.persisted) return;
-    void navigator.storage
-      .persisted()
-      .then(setPersistent)
-      .catch(() => setPersistent(false));
-  }, []);
-
-  const requestPersistentStorage = async () => {
-    try {
-      setPersistent(await navigator.storage.persist());
-    } catch {
-      setPersistent(false);
-    }
-  };
 
   const requestTargetDummyInput: TargetDummyInputHandler = (request) => {
     setTargetDummyRequest(request);
@@ -177,29 +160,6 @@ export default function LocalReportSelector() {
         Experimental — requires a current Retail advanced combat log. Your log stays in this
         browser.
       </small>
-      {typeof navigator.storage?.persist === 'function' && (
-        <div>
-          {persistent === true ? (
-            <small>Imported reports are protected from automatic browser cleanup.</small>
-          ) : (
-            <>
-              <button
-                className="btn btn-link btn-sm"
-                type="button"
-                onClick={() => void requestPersistentStorage()}
-              >
-                Protect reports from automatic browser cleanup
-              </button>
-              {persistent === false && (
-                <small>
-                  Your reports are still saved. This browser may remove them if device storage runs
-                  low.
-                </small>
-              )}
-            </>
-          )}
-        </div>
-      )}
       {storageWarning && (
         <div className="alert alert-warning" role="alert" style={{ marginTop: 10 }}>
           {storageWarning}

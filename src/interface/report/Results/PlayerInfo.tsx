@@ -9,6 +9,7 @@ import PlayerInfoGems from './PlayerInfoGems';
 import PlayerInfoTalents from './PlayerInfoTalents';
 import GameBranch from 'game/GameBranch';
 import { CLASS_NAMES } from 'game/CLASSES';
+import { publicAsset } from 'config/staticHosting';
 
 interface Props {
   combatant: FullCombatant;
@@ -23,7 +24,7 @@ export const characterBackgroundImage = (thumbnail?: string, region?: string): s
       'main-raw.png',
     )}`;
   } else {
-    return '/img/fallback-character.jpg';
+    return publicAsset('img/fallback-character.jpg');
   }
 };
 export const classBackgroundImage = (className?: string, region?: string): string | null => {

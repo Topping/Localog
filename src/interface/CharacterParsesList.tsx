@@ -11,6 +11,7 @@ import { Link } from 'react-router-dom';
 import { Item } from 'parser/core/Events';
 import Spell from 'common/SPELLS/Spell';
 import getTalentFromEntry from 'common/TALENTS/getTalentFromEntry';
+import { publicAsset } from 'config/staticHosting';
 
 const TRINKET_SLOTS = [GEAR_SLOTS.TRINKET1, GEAR_SLOTS.TRINKET2];
 
@@ -53,7 +54,9 @@ interface CharacterParsesListProps {
 
 class CharacterParsesList extends PureComponent<CharacterParsesListProps> {
   iconPath(specName: string) {
-    return `/specs/${this.props.class.replace(' ', '')}-${specName.replace(' ', '')}.jpg`;
+    return publicAsset(
+      `specs/${this.props.class.replace(' ', '')}-${specName.replace(' ', '')}.jpg`,
+    );
   }
 
   itemFilter(item: Item, index: number) {

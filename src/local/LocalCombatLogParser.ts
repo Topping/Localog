@@ -683,7 +683,7 @@ const ability = (id?: string, name?: string, school?: string): Ability | undefin
         guid,
         name: name || 'Unknown spell',
         type: number(school) ?? 0,
-        abilityIcon: 'spell_shadow_unknown',
+        abilityIcon: 'custom-icon-equipment_empty_gem_socket',
       };
 };
 

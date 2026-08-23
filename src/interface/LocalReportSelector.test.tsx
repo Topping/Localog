@@ -114,32 +114,4 @@ describe('LocalReportSelector', () => {
     expect(screen.queryByText(/Import cancelled/)).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Retry this file' })).not.toBeInTheDocument();
   });
-
-  it('explains that persistence protects already-saved reports from automatic cleanup', async () => {
-    const storageDescriptor = Object.getOwnPropertyDescriptor(navigator, 'storage');
-    const persist = vi.fn().mockResolvedValue(false);
-    Object.defineProperty(navigator, 'storage', {
-      configurable: true,
-      value: { persist, persisted: vi.fn().mockResolvedValue(false) },
-    });
-
-    try {
-      render(<LocalReportSelector />);
-      const button = await screen.findByRole('button', {
-        name: 'Protect reports from automatic browser cleanup',
-      });
-      fireEvent.click(button);
-
-      expect(
-        await screen.findByText(/Your reports are still saved.*may remove them.*storage runs low/),
-      ).toBeInTheDocument();
-      expect(persist).toHaveBeenCalledOnce();
-    } finally {
-      if (storageDescriptor) {
-        Object.defineProperty(navigator, 'storage', storageDescriptor);
-      } else {
-        Reflect.deleteProperty(navigator, 'storage');
-      }
-    }
-  });
 });
