@@ -179,8 +179,8 @@ export default function TargetDummyImportInput({
 
       <p className={styles.FinePrint}>
         Identity, specialization, talents, and equipment come from this profile. A matching
-        companion block also binds the selected player, client build, capture time, and advanced-log
-        marker before the report is created.
+        companion block also validates the selected player, client build, and advanced-log marker
+        before the report is created. The snapshot is applied to the attempt you select.
       </p>
       <details className={styles.TechnicalDetails}>
         <summary>Technical discovery details</summary>

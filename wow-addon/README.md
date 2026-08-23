@@ -22,7 +22,7 @@ The addon declares SimulationCraft as a required dependency so its public API ha
 5. Leave combat normally. If Localog started logging, the panel will stop it after restrictions clear and then show **READY**. If logging was already active, Localog leaves it active and says so.
 6. In **READY**, click **Copy for Localog**. The companion opens one selected edit box containing the complete SimC profile, one companion block, and one recalculated terminal checksum.
 7. As a convenience, running `/simc` while the same snapshot is **READY** should place the same kind of combined export in SimulationCraft's own selected edit box. If that private UI seam is incompatible, `/simc` remains unchanged and the companion directs you back to **Copy for Localog**.
-8. Select the matching combat log, character, and attempt in Localog, then paste the selected combined export. Localog validates the block, checksum, player, build, capture time, and the selected segment's advanced-log marker before creating a report.
+8. Select the intended combat log, character, and attempt in Localog, then paste the selected combined export. Localog validates the block, checksum, player, build, and the selected segment's advanced-log marker before creating a report. The selected attempt is authoritative; capture time is retained only as diagnostic provenance.
 9. Use **Copy evidence** for a sanitized addon result that omits the profile, character identifiers, and aura identifiers.
 
 The panel treats an unknown `LoggingCombat` result as rate limiting, shows a ten-second recovery countdown, and requires an explicit retry. It never assumes ownership after an unknown result. If an owned stop cannot be confirmed, **Stop combat logging** remains available; **Dismiss** intentionally abandons the in-memory session so logging must then be checked manually.
@@ -41,9 +41,9 @@ Slash commands:
 
 **CA-04 implementation is ready for browser validation.** The importer accepts zero or one protocol v1 block. A plain `/simc` profile retains the previous target-dummy behavior; a present companion block is fail-closed and is carried through preparation only after every structural and identity check succeeds.
 
-The browser normalizes LF/CRLF input and enforces the protocol's field order, ASCII grammar, 512-byte line limit, 64 KiB block limit, 255-aura limit, canonical aura ordering, duplicate prohibition, completeness invariants, and terminal Adler-32 checksum. It then binds the snapshot to the exact selected player, SimC client version/build/TOC, available combat-log build metadata, a centralized ±10-second attempt activity tolerance, and the active segment's explicit `ADVANCED_LOG_ENABLED,1` marker. WoW's unzoned log wall clock is interpreted in the browser's local timezone for the Unix-time comparison.
+The browser normalizes LF/CRLF input and enforces the protocol's field order, ASCII grammar, 512-byte line limit, 64 KiB block limit, 255-aura limit, canonical aura ordering, duplicate prohibition, completeness invariants, and terminal Adler-32 checksum. It then binds the snapshot to the exact selected player, SimC client version/build/TOC, available combat-log build metadata, and the active segment's explicit `ADVANCED_LOG_ENABLED,1` marker. Capture time is retained for diagnostics but does not override the user's attempt selection.
 
-The UI now prefers **Copy for Localog** while retaining plain `/simc` as the no-snapshot fallback. Parser and binding failures are recoverable and tell the player whether to recopy, update, choose the matching player/attempt, use the same build, or record a new advanced-log attempt. Aura materialization remains CA-05 work.
+The UI now prefers **Copy for Localog** while retaining plain `/simc` as the no-snapshot fallback. Parser and binding failures are recoverable and tell the player whether to recopy, update, choose the matching player/profile, use the same build, or record a new advanced-log attempt. Aura materialization remains CA-05 work.
 
 ## CA-03 test status
 

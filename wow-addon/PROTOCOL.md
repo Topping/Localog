@@ -185,16 +185,15 @@ The addon MUST NOT append a block if it cannot recognize or reproduce the curren
 
 ## Binding to a local combat-log attempt
 
-The snapshot is not globally reusable. Before materializing auras, Localog MUST validate it against the selected target-dummy attempt:
+Before materializing auras, Localog MUST validate the snapshot against the selected target-dummy input:
 
 - `player_guid` exactly equals the selected player GUID.
 - `client_version`, `client_build`, and `client_toc` agree with the SimulationCraft provenance and the selected log metadata wherever each value is available.
-- `captured_at` falls inside the selected attempt's activity envelope, allowing only the documented clock tolerance.
 - The selected log segment's `COMBAT_LOG_VERSION` metadata explicitly contains `ADVANCED_LOG_ENABLED,1`.
 
-Start with a ±10 second tolerance around the discovered attempt activity envelope. The implementation MAY adjust this only from captured evidence and MUST keep the value centralized and documented.
+`captured_at` remains diagnostic provenance. The importer does not reject a structurally valid snapshot based on its capture time: the user-selected target-dummy attempt is authoritative. This avoids false mismatches from the combat log's timezone-free wall clock and allows a recent snapshot to be reused when the precise pre-pull aura boundary is not analytically significant.
 
-A mismatch is a hard, recoverable preparation failure. The UI should ask the user to choose the matching player/attempt or make a new capture. It must not silently discard a mismatched block and proceed as if no snapshot was supplied.
+A player, build, TOC, or advanced-log mismatch is a hard, recoverable preparation failure. The UI should ask the user to choose the matching player/profile or make a new capture. It must not silently discard a mismatched block and proceed as if no snapshot was supplied.
 
 ## Import result
 
@@ -220,7 +219,6 @@ Recommended typed failure groups:
 | Combined checksum mismatch           | Copy the complete export again.                                               |
 | Player mismatch                      | Select the character used for this capture.                                   |
 | Build/TOC mismatch                   | Use the log and export from the same client session/build.                    |
-| Attempt-time mismatch                | Select the matching attempt or record a fresh standalone attempt.             |
 | Advanced log marker absent/disabled  | Enable advanced logging and record a new attempt.                             |
 | Partial snapshot                     | Continue with captured auras and show exact skipped counts as a warning.      |
 | No block                             | Continue with current empty-aura behavior and explain the optional companion. |

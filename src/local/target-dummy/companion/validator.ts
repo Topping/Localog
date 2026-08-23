@@ -1,11 +1,6 @@
 import type { TargetDummySessionCandidate } from '../contracts';
 import type { ParsedSimcAddonProfile } from '../simc/contracts';
-import {
-  COMPANION_CAPTURE_TIME_TOLERANCE_MS,
-  type CompanionResult,
-  type CompanionSnapshot,
-  type CompanionSnapshotFailureCode,
-} from './contracts';
+import type { CompanionResult, CompanionSnapshot, CompanionSnapshotFailureCode } from './contracts';
 
 interface CompanionSnapshotBinding {
   readonly playerGuid: string;
@@ -19,20 +14,6 @@ function failure(
   suggestedAction: string,
 ): CompanionResult<never> {
   return { ok: false, error: { code, message, recoverable: true, suggestedAction } };
-}
-
-/** Convert the UTC-encoded wall clock retained by discovery into local Unix time. */
-function combatLogWallClockToEpoch(timestamp: number): number {
-  const wallClock = new Date(timestamp);
-  return new Date(
-    wallClock.getUTCFullYear(),
-    wallClock.getUTCMonth(),
-    wallClock.getUTCDate(),
-    wallClock.getUTCHours(),
-    wallClock.getUTCMinutes(),
-    wallClock.getUTCSeconds(),
-    wallClock.getUTCMilliseconds(),
-  ).getTime();
 }
 
 export function validateCompanionSnapshotBinding(
@@ -67,19 +48,6 @@ export function validateCompanionSnapshotBinding(
     );
   }
 
-  const capturedAt = snapshot.capturedAt * 1000;
-  const activityStart = combatLogWallClockToEpoch(binding.session.activityStart);
-  const activityEnd = combatLogWallClockToEpoch(binding.session.end);
-  if (
-    capturedAt < activityStart - COMPANION_CAPTURE_TIME_TOLERANCE_MS ||
-    capturedAt > activityEnd + COMPANION_CAPTURE_TIME_TOLERANCE_MS
-  ) {
-    return failure(
-      'COMPANION_CAPTURE_TIME_MISMATCH',
-      'The Localog companion snapshot was not captured during the selected target-dummy attempt.',
-      'Select the matching attempt or record a fresh standalone attempt and companion export.',
-    );
-  }
   if (log?.advancedLogging !== true) {
     return failure(
       'COMPANION_ADVANCED_LOG_REQUIRED',

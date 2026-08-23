@@ -1,5 +1,4 @@
 export const COMPANION_SCHEMA_VERSION = 1;
-export const COMPANION_CAPTURE_TIME_TOLERANCE_MS = 10_000;
 
 export type CompanionSnapshotFailureCode =
   | 'COMPANION_BLOCK_MALFORMED'
@@ -8,7 +7,6 @@ export type CompanionSnapshotFailureCode =
   | 'COMPANION_CHECKSUM_MISMATCH'
   | 'COMPANION_PLAYER_MISMATCH'
   | 'COMPANION_BUILD_MISMATCH'
-  | 'COMPANION_CAPTURE_TIME_MISMATCH'
   | 'COMPANION_ADVANCED_LOG_REQUIRED';
 
 export interface CompanionSnapshotFailure {
