@@ -82,11 +82,12 @@ class Putrefy extends Analyzer.withDependencies({
 
     this.chargesSpentOutsideDarkTransformation += 1;
     this.entries.push({
-      value: QualitativePerformance.Fail,
+      value: QualitativePerformance.Ok,
       tooltip: (
         <>
           Spent @ {this.owner.formatTimestamp(event.timestamp)} outside{' '}
-          <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />.
+          <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />. This can be correct to avoid
+          wasting charges or when the next burst window is still far away.
         </>
       ),
     });
@@ -103,7 +104,7 @@ class Putrefy extends Analyzer.withDependencies({
     return this.chargesSpentDuringDarkTransformation + this.chargesSpentOutsideDarkTransformation;
   }
 
-  get efficiency(): number {
+  get darkTransformationAlignment(): number {
     return this.totalChargesSpent > 0
       ? 1 - this.chargesSpentOutsideDarkTransformation / this.totalChargesSpent
       : 1;
@@ -128,7 +129,7 @@ class Putrefy extends Analyzer.withDependencies({
         ),
       },
       {
-        color: '#ef4444',
+        color: '#eab308',
         label: (
           <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF}>
             Outside Dark Transformation
@@ -153,10 +154,10 @@ class Putrefy extends Analyzer.withDependencies({
         <strong>
           <SpellLink spell={TALENTS.PUTREFY_TALENT} />
         </strong>{' '}
-        should only be used during <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />.
-        Spending charges outside this window is a damage loss, so your goal is 100%{' '}
-        <SpellLink spell={TALENTS.PUTREFY_TALENT} /> usage during{' '}
-        <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />.
+        is strongest during <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />, but patch 12.1
+        charge generation means you should also spend it before capping. San'layn can spend a charge
+        outside the window when <SpellLink spell={TALENTS.DARK_TRANSFORMATION_TALENT} /> is still at
+        least 15 seconds away.
       </p>
     );
 
@@ -168,11 +169,13 @@ class Putrefy extends Analyzer.withDependencies({
           </strong>
         </div>
         <div style={{ marginBottom: '8px' }}>
-          <strong>{formatPercentage(this.efficiency, 0)}%</strong> <small>efficiency</small>
+          <strong>{formatPercentage(this.darkTransformationAlignment, 0)}%</strong>{' '}
+          <small>Dark Transformation alignment</small>
         </div>
         <p style={{ margin: '0 0 8px 0' }}>
-          Only use <SpellLink spell={TALENTS.PUTREFY_TALENT} /> charges during{' '}
-          <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />.
+          Prioritize <SpellLink spell={TALENTS.PUTREFY_TALENT} /> during{' '}
+          <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />, without wasting charge
+          generation.
         </p>
         <small style={{ display: 'grid', gap: '2px', marginBottom: '6px' }}>
           <span>
@@ -188,7 +191,7 @@ class Putrefy extends Analyzer.withDependencies({
             <span
               style={{
                 ...LEGEND_DOT_BASE_STYLE,
-                backgroundColor: '#ef5350',
+                backgroundColor: '#eab308',
               }}
             />
             Outside <SpellLink spell={DK_SPELLS.DARK_TRANSFORMATION_BUFF} />
@@ -212,7 +215,7 @@ class Putrefy extends Analyzer.withDependencies({
       >
         <BoringSpellValueText spell={TALENTS.PUTREFY_TALENT}>
           <div>
-            {formatPercentage(this.efficiency, 0)}% <small>efficiency</small>
+            {formatPercentage(this.darkTransformationAlignment, 0)}% <small>DT alignment</small>
           </div>
         </BoringSpellValueText>
         <div style={{ padding: '8px' }}>

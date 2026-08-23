@@ -1,10 +1,11 @@
 import { change, date } from 'common/changelog';
 import SPELLS from 'common/SPELLS';
-import { Brandrewsss, MarchingCube, Myrx } from 'CONTRIBUTORS';
+import { Brandrewsss, MarchingCube, Myrx, Topping } from 'CONTRIBUTORS';
 import SpellLink from 'interface/SpellLink';
 import TALENTS from 'common/TALENTS/deathknight';
 
 export default [
+  change(date(2026, 8, 23), <>Added a patch 12.1 Action Priority List for Rider of the Apocalypse and San'layn and updated rotational analysis.</>, Topping),
   change(date(2026, 5, 29),  <>Added <SpellLink spell={TALENTS.SUDDEN_DOOM_TALENT} /> analysis for proc windows and cast tracking.</>, Myrx),
   change(date(2026, 5, 28), <>Fixed an issue with remaining DT cooldown calulation in Soul Reaper module.</>, Myrx),
   change(date(2026, 5, 27), <>Improved Plague efficiency analysis.</>, Myrx),

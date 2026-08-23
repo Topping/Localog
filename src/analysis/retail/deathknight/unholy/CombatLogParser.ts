@@ -25,6 +25,7 @@ import LesserGhoul from './modules/features/LesserGhoul';
 import RunicPowerGraph from './modules/core/RunicPowerGraph';
 import RuneGraph from './modules/core/RuneGraph';
 import Guide from './modules/Guide';
+import AplCheck from './modules/apl/AplCheck';
 
 class CombatLogParser extends CoreCombatLogParser {
   static specModules = {
@@ -37,6 +38,7 @@ class CombatLogParser extends CoreCombatLogParser {
     channeling: Channeling,
     suddenDoomLinkNormalizer: SuddenDoomLinkNormalizer,
     scourgeStrike: ScourgeStrike,
+    aplCheck: AplCheck,
 
     // Features
     plagueEfficiency: PlagueEfficiency,

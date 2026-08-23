@@ -4,10 +4,18 @@ export function IntroSection() {
   return (
     <Section title="Introduction">
       <p>
-        Hello and welcome to the analyzer for the Unholy Death Knight specialization! All
-        information is sourced from the latest class guides on{' '}
-        <a href="https://www.wowhead.com/unholy-death-knight-guide">Wowhead</a> and{' '}
-        <a href="https://www.icy-veins.com/wow/unholy-death-knight-pve-dps-guide">Icy Veins</a>
+        Welcome to the patch 12.1 Unholy Death Knight analyzer. Its rotational guidance follows the
+        current guides from{' '}
+        <a href="https://www.method.gg/guides/unholy-death-knight/playstyle-and-rotation">Method</a>
+        ,{' '}
+        <a href="https://maxroll.gg/wow/class-guides/unholy-death-knight-raid-guide#rotation-header">
+          Maxroll
+        </a>{' '}
+        and{' '}
+        <a href="https://www.wowhead.com/guide/classes/death-knight/unholy/rotation-cooldowns-pve-dps">
+          Wowhead
+        </a>
+        , with Method taking precedence where their recommendations differ.
       </p>
       <p>
         Unholy is all about spreading diseases, managing your undead army, and syncing your
