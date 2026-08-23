@@ -69,8 +69,7 @@ export default function TargetDummyImportInput({
       <div className={styles.Intro} role="status">
         <strong>Target-dummy activity found</strong>
         <span>
-          Choose the character and attempt, then paste that character's Localog Companion export or
-          current SimulationCraft profile.
+          Choose the character and attempt, then paste that character's Localog Companion export.
         </span>
       </div>
 
@@ -138,11 +137,11 @@ export default function TargetDummyImportInput({
 
       <div className={styles.Field}>
         <label className={styles.FieldLabel} htmlFor="target-dummy-simc">
-          SimulationCraft addon export
+          Localog Companion export
         </label>
         <span className={styles.FieldHelp}>
-          Prefer <strong>Copy for Localog</strong> in the companion panel. A plain{' '}
-          <code>/simc</code> export remains supported without a pull-time aura snapshot.
+          In World of Warcraft, open <code>/localog</code> after your practice attempt and use{' '}
+          <strong>Copy for Localog</strong>.
         </span>
         <textarea
           id="target-dummy-simc"
@@ -150,7 +149,7 @@ export default function TargetDummyImportInput({
           rows={8}
           value={simcProfile}
           onChange={(event) => setSimcProfile(event.target.value)}
-          placeholder="Paste the complete /simc output here…"
+          placeholder="Paste the complete Localog Companion export here…"
           disabled={disabled}
           required
         />
@@ -200,9 +199,9 @@ export default function TargetDummyImportInput({
       )}
 
       <p className={styles.FinePrint}>
-        Identity, specialization, talents, and equipment come from this profile. A matching
-        companion block also validates the selected player, client build, and advanced-log marker
-        before the report is created. The snapshot is applied to the attempt you select.
+        Character details and pull-time auras come from this export. Localog validates the selected
+        player, client build, and advanced-log marker before creating the report. The snapshot is
+        applied to the attempt you select.
       </p>
       <details className={styles.TechnicalDetails}>
         <summary>Technical discovery details</summary>

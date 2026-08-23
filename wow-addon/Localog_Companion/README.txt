@@ -1,4 +1,4 @@
-LOCALOG COMPANION 0.5.0
+LOCALOG COMPANION 0.5.1
 =======================
 
 Localog Companion records one target-dummy attempt and adds the readable pull-time
@@ -26,14 +26,13 @@ INSTALL
 ONE-CAPTURE FLOW
 
 1. Out of combat, click Start practice capture.
-2. Wait for ARMED, then fight the target dummy.
-3. Leave combat normally and wait for READY.
+2. Wait for Capture armed, then fight the target dummy.
+3. Leave combat normally and wait for Ready to import.
 4. Click Copy for Localog. The complete combined export is selected automatically.
 5. Copy it, open Localog's local combat-log importer, choose the matching character
-   and attempt, and paste it into the SimulationCraft addon export field.
+   and attempt, and paste it into the Localog Companion export field.
 6. Import selected attempt.
 
-Running /simc after READY is a convenience. Copy for Localog is the stable fallback.
 New capture replaces the current in-memory snapshot. If Localog says the snapshot is
 old, it will still export; choose the attempt that belongs to that capture.
 
@@ -44,14 +43,14 @@ PRIVACY
 - It has no networking, uploads, addon communication, or SavedVariables.
 - The combined clipboard text contains the normal SimulationCraft character profile,
   the player GUID, readable aura spell/source IDs, client build, and capture time.
-  Treat that text as private. Copy evidence produces a sanitized diagnostic instead.
+  Treat that text as private.
 - Localog processes the chosen combat log in the browser and does not upload the file.
 
 LIMITATIONS AND RECOVERY
 
 - Capture only starts out of combat and while addon restrictions are inactive.
 - If combat logging was already on, the addon leaves it on and never claims ownership.
-- If logging is rate-limited, wait for the panel countdown and use Retry preflight or
+- If logging is rate-limited, wait for the panel countdown and use Retry or
   Stop combat logging. The addon never assumes an unknown result succeeded.
 - A partial snapshot exports only safely readable auras and reports exact skipped
   counts. An unavailable snapshot is never replaced with stale aura data.
@@ -68,7 +67,7 @@ COMMANDS
 /localog start    Start a new capture
 /localog retry    Retry a rate-limited preflight or owned logging stop
 /localog cancel   Cancel and discard the current capture
-/localog export   Open a fresh combined export when READY
-/localog copy     Open sanitized evidence
+/localog export   Open a fresh combined export when ready
+/localog copy     Open a fresh combined export when ready
 
 Source and license: https://github.com/Topping/WoWAnalyzer

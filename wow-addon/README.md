@@ -2,7 +2,7 @@
 
 `Localog_Companion` is a standalone World of Warcraft addon for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and appends its bounded protocol v1 snapshot to a fresh SimulationCraft profile for one-copy import.
 
-The current `0.5.0` CA-06 test build contains the complete version-one addon flow, and the browser importer implements CA-05 aura materialization. Both **Copy for Localog** and the optional `/simc` convenience hook use the same strict combined-export builder. It validates SimulationCraft's original checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
+The current `0.5.1` build contains the complete version-one addon flow plus the first post-CA-06 UX cleanup, and the browser importer implements CA-05 aura materialization. **Copy for Localog** uses the strict combined-export builder: it validates the underlying character profile's checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
 
 ## Install
 
@@ -28,13 +28,12 @@ The command validates the exact release file allowlist, TOC interface/version/de
 
 1. Stand at the target dummy while out of combat and unrestricted.
 2. Run `/localog` and click **Start practice capture**.
-3. Confirm that the panel reaches **ARMED** and shows advanced logging, combat logging, and the SimulationCraft API as available.
-4. Begin a normal target-dummy pull. The panel should change to **CAPTURED** at the pull boundary.
-5. Leave combat normally. If Localog started logging, the panel will stop it after restrictions clear and then show **READY**. If logging was already active, Localog leaves it active and says so.
-6. In **READY**, click **Copy for Localog**. The companion opens one selected edit box containing the complete SimC profile, one companion block, and one recalculated terminal checksum.
+3. Wait for **Capture armed**. The main button becomes a disabled **Capture in progress** indicator; **Abort** is a separate secondary action.
+4. Begin a normal target-dummy pull. The panel guides you to leave combat normally when finished.
+5. Leave combat. If Localog started logging, it stops it after restrictions clear; pre-existing logging is left alone. The panel then shows **Ready to import**.
+6. Click **Copy for Localog**. The companion opens one selected edit box containing the complete character profile, one companion block, and one recalculated terminal checksum.
 7. As a convenience, running `/simc` while the same snapshot is **READY** should place the same kind of combined export in SimulationCraft's own selected edit box. If that private UI seam is incompatible, `/simc` remains unchanged and the companion directs you back to **Copy for Localog**.
 8. Select the intended combat log, character, and attempt in Localog, then paste the selected combined export. Localog validates the block, checksum, player, build, and the selected segment's advanced-log marker before creating a report. The selected attempt is authoritative; capture time is retained only as diagnostic provenance. If the panel says the in-memory snapshot is old, it still exports, so select the attempt that belongs to that capture or choose **New capture**.
-9. Use **Copy evidence** for a sanitized addon result that omits the profile, character identifiers, and aura identifiers.
 
 The panel treats an unknown `LoggingCombat` result as rate limiting, shows a ten-second recovery countdown, and requires an explicit retry. It never assumes ownership after an unknown result. If an owned stop cannot be confirmed, **Stop combat logging** remains available; **Dismiss** intentionally abandons the in-memory session so logging must then be checked manually.
 
@@ -46,13 +45,13 @@ Slash commands:
 - `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
 - `/localog export` generates a fresh SimC profile, adds the ready snapshot, verifies and recalculates its checksum, and opens the selected combined export.
 - `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
-- `/localog copy` opens and selects sanitized evidence (`evidence` is an alias).
+- `/localog copy` opens the same fresh combined export as `/localog export`.
 
 ## Privacy and limitations
 
 - The addon reads only `HELPFUL` auras affecting the current player during the synchronous Combat `Activating` event. It does not collect rotations, combat events, hostile units, other players, aura durations, expiration times, health, resources, or positions.
 - The snapshot exists only in Lua memory. It is never placed in SavedVariables and is cleared by `/reload`, logout, or a client crash. The addon performs no upload, networking, addon communication, filesystem read, or browser interaction.
-- The combined clipboard value contains the normal SimC character profile plus player/source GUIDs, aura spell IDs and stacks, client build, and capture time. Treat it as private. **Copy evidence** intentionally omits the profile, GUIDs, and spell IDs.
+- The combined clipboard value contains the character profile plus player/source GUIDs, aura spell IDs and stacks, client build, and capture time. Treat it as private.
 - Localog parses the selected combat-log file in the browser and stores the normalized report in that browser origin's IndexedDB. The local file is not uploaded by this workflow.
 - Version one supports Retail project 1, combat-log version 22, WoW 12.1.0/TOC 120100, protocol schema 1, and the matching checked-in talent snapshot. The log, companion snapshot, and SimC profile must describe the same supported build.
 - Complete capture is not guaranteed. Partial captures preserve only safely readable records and report exact skip counts. An unavailable capture produces no companion block, and stale aura data is never substituted automatically.
@@ -63,22 +62,22 @@ Slash commands:
 
 CA-06 packages the independently copyable addon and hardens the complete panel-to-browser journey. Previously supplied Retail evidence covers the core restriction boundary, both combat-log ownership paths, cancellation before combat, restricted start, rate-limit recovery, reload ownership safety, combined export, and `/simc` compatibility. Existing browser tests cover short/low-confidence attempt discovery, cancellation and stale worker messages, recoverable stale selections, exact player/profile/build binding, partial aura materialization, plain `/simc`, capture summary rendering, import, analysis, reopen, and deletion.
 
-| Scenario             | Current evidence and expected result                                                                                                                                                                |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Short attempt        | Existing discovery/import coverage accepts qualifying short windows as lower confidence; the complete companion snapshot materializes when the selected attempt is imported.                        |
-| Cancel before combat | Retail verified; owned logging is stopped, no snapshot is kept, and CA-06 now leaves an explicit canceled-before-combat message.                                                                    |
-| Pre-existing logging | Retail verified; the session never owns or stops it and READY states that logging remains on.                                                                                                       |
-| Logging rate limit   | Retail verified; no false ARMED state, a countdown is shown, and retry remains explicitly user-triggered.                                                                                           |
-| `/reload`            | Retail verified; the snapshot and ownership are forgotten, and active logging is treated as pre-existing on the next start.                                                                         |
-| Partial capture      | Protocol and browser materialization paths preserve safe records and exact skip diagnostics; a natural partial Retail capture remains opportunistic.                                                |
-| Repeated `/simc`     | Every hook invocation rebuilds from the fresh SimC profile and rejects already nested blocks; CA-06 evidence counts exports and distinct outputs.                                                   |
-| Off-spec toggle      | The hook consumes the newly generated profile passed by SimulationCraft; toggling spec and reopening `/simc` must produce a fresh checksum/output, visible as a second distinct output in evidence. |
-| Old snapshot         | CA-06 warns after 15 minutes without blocking export; the selected Localog attempt remains authoritative. **New capture** replaces it.                                                              |
-| Wrong player         | Browser binding rejects the snapshot before report creation and asks for the matching character or a new capture.                                                                                   |
-| Wrong attempt        | Selection is intentionally authoritative; the UI and bundled README tell the user to choose the attempt belonging to the capture.                                                                   |
-| Wrong build          | Browser binding rejects any snapshot/profile/log build or TOC mismatch before normalization.                                                                                                        |
+| Scenario             | Current evidence and expected result                                                                                                                                         |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Short attempt        | Existing discovery/import coverage accepts qualifying short windows as lower confidence; the complete companion snapshot materializes when the selected attempt is imported. |
+| Cancel before combat | Retail verified; owned logging is stopped, no snapshot is kept, and CA-06 now leaves an explicit canceled-before-combat message.                                             |
+| Pre-existing logging | Retail verified; the session never owns or stops it and READY states that logging remains on.                                                                                |
+| Logging rate limit   | Retail verified; no false ARMED state, a countdown is shown, and retry remains explicitly user-triggered.                                                                    |
+| `/reload`            | Retail verified; the snapshot and ownership are forgotten, and active logging is treated as pre-existing on the next start.                                                  |
+| Partial capture      | Protocol and browser materialization paths preserve safe records and exact skip diagnostics; a natural partial Retail capture remains opportunistic.                         |
+| Repeated `/simc`     | Every hook invocation rebuilds from the fresh profile and rejects already nested blocks.                                                                                     |
+| Off-spec toggle      | The hook consumes the newly generated profile passed by SimulationCraft; toggling spec and reopening `/simc` must produce a fresh checksum/output.                           |
+| Old snapshot         | CA-06 warns after 15 minutes without blocking export; the selected Localog attempt remains authoritative. **New capture** replaces it.                                       |
+| Wrong player         | Browser binding rejects the snapshot before report creation and asks for the matching character or a new capture.                                                            |
+| Wrong attempt        | Selection is intentionally authoritative; the UI and bundled README tell the user to choose the attempt belonging to the capture.                                            |
+| Wrong build          | Browser binding rejects any snapshot/profile/log build or TOC mismatch before normalization.                                                                                 |
 
-The CA-06 repository release gate passes: the standalone source/package validator and archive integrity check pass; full-repository formatting, linting, and TypeScript checks pass; 49 focused existing tests pass; the static architecture check and production build pass; and both Chromium local-import journeys pass against an isolated production preview. The build emits the repository's existing non-failing CSS and chunk-size warnings, and the analyzer fixture emits its existing non-failing jsdom canvas diagnostic. The generated `0.5.0` archive SHA-256 is printed by the packaging command rather than pinned here because archive metadata can differ between packaging hosts.
+The CA-06 repository release gate passes: the standalone source/package validator and archive integrity check pass; full-repository formatting, linting, and TypeScript checks pass; 49 focused existing tests pass; the static architecture check and production build pass; and both Chromium local-import journeys pass against an isolated production preview. The build emits the repository's existing non-failing CSS and chunk-size warnings, and the analyzer fixture emits its existing non-failing jsdom canvas diagnostic. Package SHA-256 values are printed by the packaging command rather than pinned here because archive metadata can differ between packaging hosts.
 
 ## CA-05 browser test status
 
@@ -124,7 +123,7 @@ The stable path and convenience path degrade independently. A missing public API
 | Complete snapshot invariants    | Verified | `completeness=complete`, both skipped counters `0`, normal terminator at index `6`, and no inaccessible aura values. |
 | Serializer bounds               | Verified | `protocol_serialized=true`; the complete block was `632` bytes against the 64 KiB limit.                             |
 
-The verified pull did not naturally contain duplicate records, unavailable source GUIDs, secret entries, or invalid entries. Their deduplication, unknown-source, partial, and unavailable paths remain fail-closed implementation branches to confirm when suitable Retail cases occur. The raw snapshot and combined export contain the SimC character profile, player/source GUIDs, spell IDs, build metadata, and capture time; do not share either publicly. The **Copy evidence** output is the sanitized test artifact.
+The verified pull did not naturally contain duplicate records, unavailable source GUIDs, secret entries, or invalid entries. Their deduplication, unknown-source, partial, and unavailable paths remain fail-closed implementation branches to confirm when suitable Retail cases occur. The raw snapshot and combined export contain the character profile, player/source GUIDs, spell IDs, build metadata, and capture time; do not share either publicly.
 
 ## CA-01 evidence status
 

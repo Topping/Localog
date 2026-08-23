@@ -82,7 +82,7 @@ export function buildCombatantInfoEvent(
           code: 'SIMC_PROFILE_MALFORMED',
           message: `Equipment slot ${item.slot} is not valid for a current Retail character.`,
           recoverable: true,
-          suggestedAction: 'Run /simc again and paste the active Retail character export.',
+          suggestedAction: 'Create a new Localog Companion capture and paste its complete export.',
         },
       };
     }
@@ -150,20 +150,22 @@ export function buildCombatantInfoEvent(
         {
           line: 0,
           severity: 'warning',
-          message: 'Live combatant ratings are unavailable in /simc and were defaulted to zero.',
+          message:
+            'Live combatant ratings are unavailable in the Localog Companion export and were defaulted to zero.',
         },
         ...(options.pullTimeAuras?.diagnostics ?? [
           {
             line: 0,
             severity: 'warning' as const,
-            message: 'Pull-time combatant auras are unavailable in /simc and were left empty.',
+            message:
+              'The Localog Companion export did not include a pull-time aura snapshot, so auras were left empty.',
           },
         ]),
         {
           line: 0,
           severity: 'warning',
           message:
-            'Item quality, icons, and gem item levels are unavailable in /simc and use display-only defaults.',
+            'Item quality, icons, and gem item levels are unavailable in the Localog Companion export and use display-only defaults.',
         },
       ],
     },

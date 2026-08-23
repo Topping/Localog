@@ -135,7 +135,9 @@ function collectPreparation(
     if (result.ok) return result.value;
     lastFailure = `${result.error.code}: ${result.error.message}`;
   }
-  throw new Error(lastFailure ?? 'No discovered attempt matched the supplied /simc profile.');
+  throw new Error(
+    lastFailure ?? 'No discovered attempt matched the supplied Localog Companion export.',
+  );
 }
 
 function round(value: number): number {

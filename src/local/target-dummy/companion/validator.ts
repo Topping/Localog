@@ -43,7 +43,7 @@ export function validateCompanionSnapshotBinding(
   if (versionMismatch || buildMismatch || tocMismatch) {
     return failure(
       'COMPANION_BUILD_MISMATCH',
-      'The Localog companion snapshot, SimulationCraft profile, and combat log do not describe the same client build.',
+      'The Localog Companion export and combat log do not describe the same client build.',
       'Use the combat log and Copy for Localog export from the same game session.',
     );
   }

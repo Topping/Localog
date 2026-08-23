@@ -7,9 +7,6 @@ local Integration = {
   convenienceIssue = nil,
   convenienceStatus = "not_attempted",
   stableStatus = "not_attempted",
-  stableExportCount = 0,
-  convenienceExportCount = 0,
-  convenienceDistinctOutputCount = 0,
 }
 Localog.SimcIntegration = Integration
 
@@ -102,24 +99,9 @@ end
 function Integration:ResetAttemptStatus()
   self.stableStatus = "not_attempted"
   self.stableIssue = nil
-  self.stableMetrics = nil
-  self.stableExportCount = 0
   self.convenienceStatus = self.convenienceHooked and "awaiting_profile" or "unavailable"
   if self.convenienceHooked then
     self.convenienceIssue = nil
-  end
-  self.convenienceMetrics = nil
-  self.convenienceExportCount = 0
-  self.convenienceOutputChecksums = {}
-  self.convenienceDistinctOutputCount = 0
-end
-
-function Integration:RecordConvenienceExport(metrics)
-  self.convenienceExportCount = self.convenienceExportCount + 1
-  local checksum = metrics and metrics.outputChecksum
-  if checksum and not self.convenienceOutputChecksums[checksum] then
-    self.convenienceOutputChecksums[checksum] = true
-    self.convenienceDistinctOutputCount = self.convenienceDistinctOutputCount + 1
   end
 end
 
@@ -177,7 +159,6 @@ function Integration:GenerateCombinedExport(snapshotBlock)
   if not self.publicApiAvailable then
     self.stableStatus = "failed"
     self.stableIssue = "missing_public_api"
-    self.stableMetrics = nil
     return nil, self.stableIssue
   end
 
@@ -192,28 +173,23 @@ function Integration:GenerateCombinedExport(snapshotBlock)
   if not ok then
     self.stableStatus = "failed"
     self.stableIssue = "profile_generation_error"
-    self.stableMetrics = nil
     return nil, self.stableIssue
   end
   if simcError ~= nil and simcError ~= "" then
     self.stableStatus = "failed"
     self.stableIssue = "profile_generation_rejected"
-    self.stableMetrics = nil
     return nil, self.stableIssue
   end
 
-  local combined, reason, metrics = self:BuildCombinedExport(profile, snapshotBlock)
+  local combined, reason = self:BuildCombinedExport(profile, snapshotBlock)
   if not combined then
     self.stableStatus = "failed"
     self.stableIssue = reason
-    self.stableMetrics = nil
     return nil, reason
   end
 
   self.stableStatus = "complete"
   self.stableIssue = nil
-  self.stableMetrics = metrics
-  self.stableExportCount = self.stableExportCount + 1
   return combined
 end
 
@@ -262,7 +238,7 @@ function Integration:HandleSimcFrame(profile)
     return
   end
 
-  local combined, reason, metrics = self:BuildCombinedExport(profile, snapshot.protocolBlock)
+  local combined, reason = self:BuildCombinedExport(profile, snapshot.protocolBlock)
   if not combined then
     self:WarnConvenience(reason)
     Localog:RefreshUI()
@@ -273,8 +249,6 @@ function Integration:HandleSimcFrame(profile)
   editBox:HighlightText()
   self.convenienceStatus = "complete"
   self.convenienceIssue = nil
-  self.convenienceMetrics = metrics
-  self:RecordConvenienceExport(metrics)
   Localog:RefreshUI()
 end
 

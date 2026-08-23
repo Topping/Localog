@@ -339,6 +339,8 @@ const ignored = new Set([
   'ENCOUNTER_END',
   'SWING_DAMAGE_LANDED',
   'SPELL_CAST_FAILED',
+  'SPELL_AURA_BROKEN_SPELL',
+  'ENCHANT_REMOVED',
 ]);
 const supportedEvents = new Set([
   'COMBATANT_INFO',

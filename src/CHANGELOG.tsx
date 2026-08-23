@@ -45,6 +45,7 @@ import SpellLink from 'interface/SpellLink';
 
 // prettier-ignore
 export default [
+  change(date(2026, 8, 23), 'Simplify Localog Companion capture guidance and target-dummy import feedback.', Topping),
   change(date(2026, 8, 23), 'Package and harden the complete Localog Companion target-dummy capture workflow.', Topping),
   change(date(2026, 8, 23), 'Add deterministic protocol v1 aura snapshots to the Localog companion addon.', Topping),
   change(date(2026, 8, 23), 'Complete Retail verification of the Localog companion logging controller and recovery paths.', Topping),

@@ -149,9 +149,7 @@ export function parseCompanionSnapshot(text: string): CompanionSnapshotParseResu
     );
   }
   if (checksumIndexes.length !== 1 || checksumIndexes[0] !== lines.length - 1) {
-    return malformed(
-      'The combined export must contain exactly one terminal SimulationCraft checksum.',
-    );
+    return malformed('The Localog Companion export must contain exactly one terminal checksum.');
   }
 
   const startIndex = startIndexes[0];
@@ -295,7 +293,7 @@ export function parseCompanionSnapshot(text: string): CompanionSnapshotParseResu
   ) {
     return failure(
       'COMPANION_CHECKSUM_MISMATCH',
-      'The combined SimulationCraft checksum does not match the pasted profile.',
+      'The Localog Companion export checksum does not match the pasted text.',
       'Run Copy for Localog again and copy the complete selected text.',
     );
   }

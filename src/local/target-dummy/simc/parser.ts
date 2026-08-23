@@ -45,7 +45,7 @@ function malformed(message: string): SimcResult<never> {
   return failure(
     'SIMC_PROFILE_MALFORMED',
     message,
-    'Run /simc in World of Warcraft again, then paste the complete addon output.',
+    'Make a new Localog Companion capture, then paste the complete export.',
   );
 }
 
@@ -197,8 +197,8 @@ function boundedLines(text: string): SimcResult<readonly string[]> {
   ) {
     return failure(
       'SIMC_PROFILE_TOO_LARGE',
-      'The pasted SimulationCraft profile is larger than 256 KiB.',
-      'Run /simc again and paste only the active character export.',
+      'The pasted Localog Companion export is larger than 256 KiB.',
+      'Copy the export again and paste only the complete selected text.',
     );
   }
   if (hasInvalidUnicode(text)) {
@@ -218,16 +218,16 @@ function boundedLines(text: string): SimcResult<readonly string[]> {
       if (lineLength > MAX_PROFILE_LINE_LENGTH) {
         return failure(
           'SIMC_PROFILE_TOO_LARGE',
-          'The pasted SimulationCraft profile exceeds the supported line limits.',
-          'Run /simc again and paste only the active character export.',
+          'The pasted Localog Companion export exceeds the supported line limits.',
+          'Copy the export again and paste only the complete selected text.',
         );
       }
     }
     if (lineCount > MAX_PROFILE_LINES) {
       return failure(
         'SIMC_PROFILE_TOO_LARGE',
-        'The pasted SimulationCraft profile exceeds the supported line limits.',
-        'Run /simc again and paste only the active character export.',
+        'The pasted Localog Companion export exceeds the supported line limits.',
+        'Copy the export again and paste only the complete selected text.',
       );
     }
   }
@@ -279,7 +279,7 @@ export function parseSimcAddonProfile(text: string): SimcProfileParseResult {
         return failure(
           'SIMC_MULTIPLE_ACTIVE_CHARACTERS',
           'The pasted profile contains more than one active character declaration.',
-          'Paste the output from one /simc window without combining profiles.',
+          'Paste one complete Localog Companion export without combining text from multiple windows.',
         );
       }
       character = { class: wowClass, name };
@@ -318,8 +318,8 @@ export function parseSimcAddonProfile(text: string): SimcProfileParseResult {
     }
     return failure(
       'SIMC_PROFILE_NOT_ADDON_EXPORT',
-      'The pasted text contains active SimulationCraft instructions outside the supported addon character export.',
-      'Paste the complete text produced directly by the SimulationCraft addon /simc command.',
+      'The pasted text contains unsupported active instructions outside the companion character export.',
+      'Use Copy for Localog and paste the complete selected text without editing it.',
     );
   }
 
@@ -328,15 +328,15 @@ export function parseSimcAddonProfile(text: string): SimcProfileParseResult {
   if (provenance.addonVersion === undefined) {
     return failure(
       'SIMC_PROFILE_NOT_ADDON_EXPORT',
-      'The pasted text is missing the SimulationCraft addon provenance header.',
-      'Paste the complete text produced directly by the SimulationCraft addon /simc command.',
+      'The pasted text is missing required Localog Companion character metadata.',
+      'Use Copy for Localog and paste the complete selected text without editing it.',
     );
   }
   if (character === undefined || missing.length > 0 || equipment.size === 0) {
     return failure(
       'SIMC_MISSING_REQUIRED_FIELD',
       'The pasted profile is missing required active character, talent, or equipment information.',
-      'Run /simc on the matching character and copy the entire output.',
+      'Make a new Localog Companion capture on the matching character and copy the entire export.',
     );
   }
   const level = parseInteger(scalars.get('level') ?? '');

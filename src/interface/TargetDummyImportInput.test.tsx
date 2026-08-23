@@ -157,7 +157,7 @@ describe('TargetDummyImportInput', () => {
       screen.queryByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }),
     ).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('radio', { name: /Grace.*Training Dummy.*possible/ }));
-    fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
+    fireEvent.change(screen.getByLabelText('Localog Companion export'), {
       target: { value: COMPANION_PROFILE },
     });
     expect(screen.getByText('Pull snapshot: 1 aura captured')).toBeInTheDocument();
@@ -179,7 +179,7 @@ describe('TargetDummyImportInput', () => {
     );
     fireEvent.change(screen.getByLabelText('Character'), { target: { value: 'Player-1' } });
     fireEvent.click(screen.getByRole('radio', { name: /Ada.*Training Dummy and 1 more.*likely/ }));
-    fireEvent.change(screen.getByLabelText('SimulationCraft addon export'), {
+    fireEvent.change(screen.getByLabelText('Localog Companion export'), {
       target: { value: 'complete profile' },
     });
 
@@ -199,7 +199,7 @@ describe('TargetDummyImportInput', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       'The race does not identify one faction. Choose the character faction.',
     );
-    expect(screen.getByLabelText('SimulationCraft addon export')).toHaveValue('complete profile');
+    expect(screen.getByLabelText('Localog Companion export')).toHaveValue('complete profile');
     fireEvent.change(screen.getByLabelText('Faction'), { target: { value: '2' } });
     fireEvent.click(screen.getByRole('button', { name: 'Import selected attempt' }));
 

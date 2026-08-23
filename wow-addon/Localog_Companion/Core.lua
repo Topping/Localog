@@ -643,10 +643,8 @@ function Localog:RegisterSlashCommands()
       end
     elseif command == "snapshot" then
       self:ShowSnapshot()
-    elseif command == "export" then
+    elseif command == "export" or command == "copy" then
       self:ShowCombinedExport()
-    elseif command == "copy" or command == "evidence" then
-      self:ShowEvidence()
     else
       self:ShowUI()
     end
@@ -656,12 +654,6 @@ end
 function Localog:ShowUI()
   if self.UI and self.UI.Show then
     self.UI:Show()
-  end
-end
-
-function Localog:ShowEvidence()
-  if self.UI and self.UI.ShowEvidence then
-    self.UI:ShowEvidence(self:BuildEvidenceText())
   end
 end
 

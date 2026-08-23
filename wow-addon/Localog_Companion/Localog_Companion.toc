@@ -2,7 +2,7 @@
 ## Title: Localog Companion
 ## Notes: Guided combat logging and aura capture for Localog target-dummy analysis.
 ## Author: Topping
-## Version: 0.5.0
+## Version: 0.5.1
 ## Dependencies: Simulationcraft
 
 Core.lua

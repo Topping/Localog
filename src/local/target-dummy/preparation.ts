@@ -102,6 +102,7 @@ export function targetDummyPreparationError(error: unknown): SimcProfileFailure 
     code: 'SIMC_PROFILE_MALFORMED',
     message: error instanceof Error ? error.message : 'Unable to prepare the target-dummy input.',
     recoverable: true,
-    suggestedAction: 'Review the selected attempt and paste the complete matching /simc output.',
+    suggestedAction:
+      'Review the selected attempt and paste the complete matching Localog Companion export.',
   };
 }
