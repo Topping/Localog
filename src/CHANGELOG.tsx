@@ -45,6 +45,7 @@ import SpellLink from 'interface/SpellLink';
 
 // prettier-ignore
 export default [
+  change(date(2026, 8, 23), 'Record successful Retail evidence for Localog pull-boundary aura capture.', Topping),
   change(date(2026, 8, 23), 'Add the first Localog companion addon evidence probe for safe pull-boundary aura capture.', Topping),
   change(date(2026, 8, 23), 'Document the Localog companion addon and combined SimulationCraft aura snapshot protocol.', Topping),
   change(date(2026, 8, 23), 'Use best-effort storage for local reports and fix images when hosted below a URL path.', Topping),

@@ -32,16 +32,16 @@ Slash commands:
 
 ## CA-00 evidence status
 
-Repository work alone cannot satisfy the in-game acceptance criterion. The following observations must be collected on the supported Retail client before snapshot serialization work begins.
+**Go decision:** a target-dummy attempt on Retail `12.1.0.69404` (TOC `120100`, map `2393`) confirmed that helpful player auras remain readable during the synchronous `Combat/Activating` dispatch. Snapshot capture and serialization work may proceed without weakening the safety model.
 
-| Observation                                        | Status                       | Evidence required                                                                                    |
-| -------------------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Runtime enum values and `Activating` ordering      | Pending in-game verification | Evidence shows Combat type `0`, Activating state `1`, and the state observed during dispatch.        |
-| Helpful player auras readable at Combat/Activating | Pending in-game verification | Target-dummy evidence ends in `complete` or an understood `partial` result with a normal terminator. |
-| Another restriction already active                 | Pending in-game verification | `armed_restrictions` and `capture_restrictions` show the other restriction and the capture outcome.  |
-| Secret aura index behavior                         | Pending in-game verification | Evidence reports a positive `skipped_secret` count without an indexed read error.                    |
+| Observation                                        | Status                       | Sanitized evidence                                                                                                    |
+| -------------------------------------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| Runtime enum values and `Activating` ordering      | Verified                     | Combat type `0`; Activating state `1`; the handler observed Combat state `1` during dispatch.                         |
+| Helpful player auras readable at Combat/Activating | Verified                     | `complete`; 6 readable auras; 0 secret; 0 invalid; normal terminator at index 7; `ShouldAurasBeSecret=false`.         |
+| Another restriction already active                 | Pending in-game verification | The verified attempt had every restriction inactive when armed and only Combat Activating during capture.             |
+| Secret aura index behavior                         | Pending in-game verification | The verified attempt contained no secret aura index. A future naturally occurring case must confirm the skip counter. |
 
-If the target-dummy attempt reports the collection as unavailable, stop CA-02 work and revise the product design. Do not weaken the secrecy checks or try to derive hidden values.
+The verified capture also reported `InCombatLockdown=false`, matching the expected pre-enforcement boundary, and detected the public SimulationCraft API. A future supported-build regression that makes the collection unavailable is a new no-go signal: stop capture work and revise the product design rather than weakening secrecy checks or deriving hidden values.
 
 ## Safety boundary
 

@@ -88,14 +88,14 @@ function Localog:BuildEvidenceText()
   end
 
   lines[#lines + 1] = "capture_status=" .. valueOrUnknown(result.status)
-  lines[#lines + 1] = "capture_reason=" .. valueOrUnknown(result.reason)
+  lines[#lines + 1] = "capture_reason=" .. (result.reason or "none")
   lines[#lines + 1] = "captured_at=" .. valueOrUnknown(result.capturedAt)
   lines[#lines + 1] = "should_auras_be_secret=" .. valueOrUnknown(result.shouldAurasBeSecret)
   lines[#lines + 1] = "readable_auras=" .. valueOrUnknown(result.auras and #result.auras or 0)
   lines[#lines + 1] = "skipped_secret=" .. valueOrUnknown(result.skippedSecret)
   lines[#lines + 1] = "skipped_invalid=" .. valueOrUnknown(result.skippedInvalid)
   lines[#lines + 1] = "terminator_index=" .. valueOrUnknown(result.terminatorIndex)
-  lines[#lines + 1] = "failed_index=" .. valueOrUnknown(result.failedIndex)
+  lines[#lines + 1] = "failed_index=" .. valueOrUnknown(result.failedIndex or "none")
   lines[#lines + 1] = "capture_elapsed_ms=" .. valueOrUnknown(result.elapsedMs)
   lines[#lines + 1] = "capture_restrictions=" .. restrictionSummary(result.restrictions)
   lines[#lines + 1] = "in_combat_lockdown_during_capture="
