@@ -82,6 +82,10 @@ export function prepareTargetDummyImport(
   };
 
   const attachedGuids = new Set([prepared.playerGuid, ...prepared.session.targetGuids]);
+  const auraSourceIds = new Set(prepared.combatantInfo.event.auras.map((aura) => aura.source));
+  for (const actor of actors) {
+    if (auraSourceIds.has(actor.id)) attachedGuids.add(actor.guid);
+  }
   for (const owned of discovery.ownedEntities) {
     if (owned.ownerGuid !== prepared.playerGuid) continue;
     attachedGuids.add(owned.guid);

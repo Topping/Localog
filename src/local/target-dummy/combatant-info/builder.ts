@@ -1,4 +1,4 @@
-import { EventType, type CombatantInfoEvent, type Item } from 'parser/core/Events';
+import { EventType, type Buff, type CombatantInfoEvent, type Item } from 'parser/core/Events';
 
 import type { LocalDiagnostic } from '../../LocalCombatLogParser';
 import {
@@ -48,6 +48,10 @@ export interface BuildCombatantInfoOptions {
   readonly build: TargetDummyBuildBinding;
   readonly timestamp: number;
   readonly factionChoice?: 1 | 2;
+  readonly pullTimeAuras?: {
+    readonly auras: readonly Buff[];
+    readonly diagnostics: readonly LocalDiagnostic[];
+  };
 }
 
 function emptyGearSlot(): Item {
@@ -131,7 +135,7 @@ export function buildCombatantInfoEvent(
         expansion: 'retail',
         pin: '',
         gear,
-        auras: [],
+        auras: [...(options.pullTimeAuras?.auras ?? [])],
         faction: validated.value.faction,
         ...zeroStats,
         talentTree: options.talents.talents.map((talent) => ({
@@ -148,11 +152,13 @@ export function buildCombatantInfoEvent(
           severity: 'warning',
           message: 'Live combatant ratings are unavailable in /simc and were defaulted to zero.',
         },
-        {
-          line: 0,
-          severity: 'warning',
-          message: 'Pull-time combatant auras are unavailable in /simc and were left empty.',
-        },
+        ...(options.pullTimeAuras?.diagnostics ?? [
+          {
+            line: 0,
+            severity: 'warning' as const,
+            message: 'Pull-time combatant auras are unavailable in /simc and were left empty.',
+          },
+        ]),
         {
           line: 0,
           severity: 'warning',

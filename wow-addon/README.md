@@ -2,7 +2,7 @@
 
 `Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and appends its bounded protocol v1 snapshot to a fresh SimulationCraft profile for one-copy import.
 
-The current `0.4.0` addon test build implements CA-03, and the browser importer implements CA-04 protocol parsing and identity binding. Both **Copy for Localog** and the optional `/simc` convenience hook use the same strict combined-export builder. It validates SimulationCraft's original checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
+The current `0.4.0` addon test build implements CA-03, and the browser importer implements CA-05 aura materialization. Both **Copy for Localog** and the optional `/simc` convenience hook use the same strict combined-export builder. It validates SimulationCraft's original checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
 
 ## Install
 
@@ -37,13 +37,21 @@ Slash commands:
 - `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
 - `/localog copy` opens and selects sanitized evidence (`evidence` is an alias).
 
+## CA-05 browser test status
+
+**CA-05 implementation is ready for browser validation.** A valid companion snapshot now seeds the synthetic `COMBATANT_INFO` event with every captured aura whose exact source GUID resolves to an actor already present in the selected combat log. Spell IDs and application counts are preserved, spell names/icons come from Localog's existing catalog when available, and unknown presentation data uses the existing fallback icon.
+
+The importer never treats an unknown source as the selected player. Records with `-`, an absent actor, or an ambiguous actor mapping are omitted with aggregate diagnostics, and accepted source actors are attached to the synthetic fight. A complete snapshot replaces the old missing-aura warning; a partial snapshot reports the addon's exact secret/invalid skip counts plus any source-resolution omissions. Plain `/simc` imports retain the existing empty aura list and warning.
+
+The paste field shows a compact **Pull snapshot: N auras captured** summary as soon as a structurally valid combined export and checksum are present, including complete/partial state and exact addon skip counters.
+
 ## CA-04 browser test status
 
 **CA-04 implementation is ready for browser validation.** The importer accepts zero or one protocol v1 block. A plain `/simc` profile retains the previous target-dummy behavior; a present companion block is fail-closed and is carried through preparation only after every structural and identity check succeeds.
 
 The browser normalizes LF/CRLF input and enforces the protocol's field order, ASCII grammar, 512-byte line limit, 64 KiB block limit, 255-aura limit, canonical aura ordering, duplicate prohibition, completeness invariants, and terminal Adler-32 checksum. It then binds the snapshot to the exact selected player, SimC client version/build/TOC, available combat-log build metadata, and the active segment's explicit `ADVANCED_LOG_ENABLED,1` marker. Capture time is retained for diagnostics but does not override the user's attempt selection.
 
-The UI now prefers **Copy for Localog** while retaining plain `/simc` as the no-snapshot fallback. Parser and binding failures are recoverable and tell the player whether to recopy, update, choose the matching player/profile, use the same build, or record a new advanced-log attempt. Aura materialization remains CA-05 work.
+The UI now prefers **Copy for Localog** while retaining plain `/simc` as the no-snapshot fallback. Parser and binding failures are recoverable and tell the player whether to recopy, update, choose the matching player/profile, use the same build, or record a new advanced-log attempt.
 
 ## CA-03 test status
 

@@ -4,6 +4,7 @@ import type {
   TargetDummyInputRequest,
   TargetDummyPreparationInput,
 } from 'local/localCombatLogProtocol';
+import { parseCompanionSnapshot } from 'local/target-dummy/companion/parser';
 import styles from './TargetDummyImportInput.module.scss';
 
 interface Props {
@@ -37,6 +38,11 @@ export default function TargetDummyImportInput({
   const [sessionId, setSessionId] = useState('');
   const [simcProfile, setSimcProfile] = useState('');
   const [factionChoice, setFactionChoice] = useState<1 | 2 | undefined>();
+  const companionSnapshot = useMemo(() => {
+    if (!simcProfile.trim()) return undefined;
+    const parsed = parseCompanionSnapshot(simcProfile);
+    return parsed.ok ? parsed.value : undefined;
+  }, [simcProfile]);
   const sessions = useMemo(
     () => request.discovery.sessions.filter((session) => session.playerGuid === playerGuid),
     [playerGuid, request.discovery.sessions],
@@ -148,6 +154,22 @@ export default function TargetDummyImportInput({
           disabled={disabled}
           required
         />
+        {companionSnapshot && (
+          <div
+            className={`${styles.CaptureSummary} ${companionSnapshot.completeness === 'partial' ? styles.PartialCapture : ''}`}
+            role="status"
+          >
+            <strong>
+              Pull snapshot: {companionSnapshot.auras.length}{' '}
+              {companionSnapshot.auras.length === 1 ? 'aura' : 'auras'} captured
+            </strong>
+            <span>
+              {companionSnapshot.completeness === 'complete'
+                ? 'Complete capture; no secret or invalid aura entries were skipped.'
+                : `Partial capture; ${companionSnapshot.skippedSecret} secret and ${companionSnapshot.skippedInvalid} invalid aura entries were skipped.`}
+            </span>
+          </div>
+        )}
       </div>
 
       {request.validationError && (

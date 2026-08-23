@@ -9,6 +9,7 @@ import { INSTALLED_TALENT_SNAPSHOTS } from './combatant-info/data/installed';
 import { decodeTalentExport } from './combatant-info/talents';
 import type { TargetDummyBuildBinding } from './combatant-info/validator';
 import { parseCompanionSnapshot } from './companion/parser';
+import { materializeCompanionAuras } from './companion/materializer';
 import { validateCompanionSnapshotBinding } from './companion/validator';
 import type { TargetDummyActorDiscoveryResult } from './contracts';
 import { parseSimcAddonProfile } from './simc/parser';
@@ -67,6 +68,10 @@ export function prepareTargetDummyInput(
   if (!talents.ok) {
     return talents;
   }
+  const pullTimeAuras =
+    companionBinding.value === undefined
+      ? undefined
+      : materializeCompanionAuras(companionBinding.value, localActors);
   const combatantInfo = buildCombatantInfoEvent({
     profile: profile.value,
     talents: talents.value,
@@ -74,6 +79,7 @@ export function prepareTargetDummyInput(
     build,
     timestamp: session.fightStart,
     factionChoice: input.factionChoice,
+    pullTimeAuras,
   });
   if (!combatantInfo.ok) {
     return combatantInfo;

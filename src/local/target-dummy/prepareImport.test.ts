@@ -61,10 +61,26 @@ describe('prepared target-dummy import', () => {
     });
     if (!prepared.ok) throw new Error(`${prepared.error.code}: ${prepared.error.message}`);
 
+    const externalAuraSource = {
+      id: 999,
+      guid: 'Player-0000-00000999',
+      name: 'External buffer',
+      flags: 0,
+      friendly: true,
+      fightIds: [],
+      fightDetails: {},
+    };
+    prepared.value.combatantInfo.event.auras.push({
+      source: externalAuraSource.id,
+      ability: 465,
+      stacks: 2,
+      icon: 'spell_holy_devotionaura',
+    });
+
     const plan = prepareTargetDummyImport(
       'target-dummy-report',
       route.discovery,
-      route.localActors,
+      [...route.localActors, externalAuraSource],
       prepared.value,
     );
     const batches: { fightId: number; events: AnyEvent[] }[] = [];
@@ -115,6 +131,9 @@ describe('prepared target-dummy import', () => {
     expect(plan.actors.find((actor) => actor.guid === prepared.value.playerGuid)).toMatchObject({
       fightIds: [1],
       fightDetails: { 1: { specID: 251, role: 'dps' } },
+    });
+    expect(plan.actors.find((actor) => actor.guid === externalAuraSource.guid)).toMatchObject({
+      fightIds: [1],
     });
     expect(plan.report.friendlyPets).toEqual(
       expect.arrayContaining([expect.objectContaining({ name: 'Risen Ghoul', petOwner: 1 })]),
