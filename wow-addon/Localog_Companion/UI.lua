@@ -29,19 +29,68 @@ local function restrictionSummary(states)
   }, ",")
 end
 
+local function checkLabel(value, enabledText, disabledText)
+  if value == true then
+    return "|cff40c040OK|r  " .. enabledText
+  end
+  if value == false then
+    return "|cffff5050NO|r  " .. disabledText
+  end
+
+  return "|cffffc040--|r  Unknown"
+end
+
+local function setButtonEnabled(button, enabled)
+  if enabled then
+    button:Enable()
+  else
+    button:Disable()
+  end
+end
+
+local function getLoggingCheck(session)
+  if session.loggingActive == nil then
+    return "|cffffc040--|r  Combat logging unknown"
+  end
+  if session.loggingActive then
+    if session.loggingOwned then
+      return "|cff40c040OK|r  Combat logging on (owned by this session)"
+    end
+    if session.loggingWasPreexisting then
+      return "|cff40c040OK|r  Combat logging on (pre-existing; will not stop)"
+    end
+    return "|cffffc040--|r  Combat logging on (ownership unknown; will not stop)"
+  end
+  if session.state == "ready" and session.loggingStartedBySession then
+    return "|cff40c040OK|r  Combat logging off (owned stop confirmed)"
+  end
+
+  return "|cffff5050NO|r  Combat logging off"
+end
+
 function Localog:BuildEvidenceText()
   local probe = self.probe
+  local session = self.session
   local context = probe.context or self:GetClientContext()
   local enums = self:GetRestrictionEnums()
   local lines = {
-    "Localog Companion CA-00 evidence",
+    "Localog Companion CA-01 evidence",
     "addon_version=" .. valueOrUnknown(context.addonVersion),
     "client_version=" .. valueOrUnknown(context.clientVersion),
     "client_build=" .. valueOrUnknown(context.clientBuild),
     "client_toc=" .. valueOrUnknown(context.clientToc),
     "project_id=" .. valueOrUnknown(context.projectID),
     "map_id=" .. valueOrUnknown(context.mapID),
-    "simc_public_api=" .. valueOrUnknown(self.SimcIntegration:GetProbeStatus()),
+    "session_state=" .. valueOrUnknown(session.state),
+    "session_issue=" .. valueOrUnknown(session.issue or "none"),
+    "advanced_logging=" .. valueOrUnknown(session.advancedLogging),
+    "logging_active=" .. valueOrUnknown(session.loggingActive),
+    "logging_owned=" .. valueOrUnknown(session.loggingOwned),
+    "logging_started_by_session=" .. valueOrUnknown(session.loggingStartedBySession),
+    "logging_was_preexisting=" .. valueOrUnknown(session.loggingWasPreexisting),
+    "logging_ownership_unknown=" .. valueOrUnknown(session.loggingOwnershipUnknown),
+    "logging_retry_seconds=" .. valueOrUnknown(self:GetLoggingRetrySeconds()),
+    "simc_public_api=" .. valueOrUnknown(session.simcPublicAPI),
     "armed_at=" .. valueOrUnknown(probe.armedAt),
     "armed_restrictions=" .. restrictionSummary(probe.armedRestrictions),
   }
@@ -106,7 +155,7 @@ end
 
 local function createEvidenceFrame()
   local frame = CreateFrame("Frame", "LocalogCompanionEvidenceFrame", UIParent, "BackdropTemplate")
-  frame:SetSize(620, 420)
+  frame:SetSize(620, 460)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
   frame:SetBackdrop({
@@ -124,7 +173,7 @@ local function createEvidenceFrame()
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Localog CA-00 evidence")
+  title:SetText("Localog CA-01 evidence")
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
@@ -148,9 +197,73 @@ local function createEvidenceFrame()
   return frame
 end
 
+local function getStatusText(session, retrySeconds)
+  if session.state == "idle" then
+    return "Ready to configure advanced logging and record one target-dummy attempt."
+  end
+  if session.state == "starting" then
+    return "Checking the client, SimulationCraft, and combat logging..."
+  end
+  if session.state == "armed" then
+    if session.loggingOwnershipUnknown then
+      return "Armed. Logging is active but ownership is unknown, so Localog will leave it on. Begin combat."
+    end
+    if session.loggingWasPreexisting then
+      return "Armed. Combat logging was already on, so Localog will leave it on. Begin combat."
+    end
+    return "Armed. Localog started combat logging. Begin your target-dummy attempt."
+  end
+  if session.state == "captured" then
+    if session.issue then
+      return "The pull-boundary snapshot was unavailable. Finish combat so logging can be handled safely."
+    end
+    return "Snapshot captured. Finish combat; owned logging will stop after restrictions clear."
+  end
+  if session.state == "stopping" then
+    if session.retryAction == "stop" then
+      if retrySeconds > 0 then
+        return string.format(
+          "Logging stop is not confirmed. Retry is available in %d seconds, or dismiss the session and stop logging manually.",
+          retrySeconds
+        )
+      end
+      return "Logging stop is not confirmed. Use Stop combat logging to retry."
+    end
+    return "Restrictions are still active. Finish combat before owned logging can be stopped."
+  end
+  if session.state == "ready" then
+    if session.loggingOwnershipUnknown then
+      return "Capture ready. Combat logging ownership was unknown, so Localog left it on."
+    end
+    if session.loggingWasPreexisting then
+      return "Capture ready. Pre-existing combat logging remains on. Combined export arrives in CA-02/CA-03."
+    end
+    return "Capture ready and owned combat logging is off. Combined export arrives in CA-02/CA-03."
+  end
+
+  if retrySeconds > 0 then
+    if session.loggingOwnershipUnknown then
+      return string.format(
+        "Logging ownership is unknown (%s). Retry in %d seconds; Localog will not stop an unowned logger.",
+        valueOrUnknown(session.issue),
+        retrySeconds
+      )
+    end
+    return string.format(
+      "Preflight is limited (%s). Retry in %d seconds or dismiss the session.",
+      valueOrUnknown(session.issue),
+      retrySeconds
+    )
+  end
+  if session.retryAction == "reset" then
+    return "Capture unavailable (" .. valueOrUnknown(session.issue) .. "). Reset and try a new attempt."
+  end
+  return "Preflight is limited (" .. valueOrUnknown(session.issue) .. "). Retry when ready."
+end
+
 function UI:Initialize()
-  local frame = CreateFrame("Frame", "LocalogCompanionProbeFrame", UIParent, "BackdropTemplate")
-  frame:SetSize(390, 210)
+  local frame = CreateFrame("Frame", "LocalogCompanionFrame", UIParent, "BackdropTemplate")
+  frame:SetSize(460, 330)
   frame:SetPoint("CENTER")
   frame:SetFrameStrata("DIALOG")
   frame:SetBackdrop({
@@ -168,39 +281,83 @@ function UI:Initialize()
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Localog companion probe")
+  title:SetText("Localog companion")
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
 
+  local state = frame:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+  state:SetPoint("TOPLEFT", 18, -48)
+  state:SetPoint("TOPRIGHT", -18, -48)
+  state:SetJustifyH("LEFT")
+
   local status = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-  status:SetPoint("TOPLEFT", 18, -50)
-  status:SetPoint("TOPRIGHT", -18, -50)
+  status:SetPoint("TOPLEFT", 18, -76)
+  status:SetPoint("TOPRIGHT", -18, -76)
   status:SetJustifyH("LEFT")
   status:SetJustifyV("TOP")
   status:SetHeight(70)
 
+  local checks = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+  checks:SetPoint("TOPLEFT", 18, -154)
+  checks:SetPoint("TOPRIGHT", -18, -154)
+  checks:SetJustifyH("LEFT")
+  checks:SetJustifyV("TOP")
+  checks:SetHeight(80)
+
   local primary = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  primary:SetSize(170, 26)
+  primary:SetSize(190, 28)
   primary:SetPoint("BOTTOMLEFT", 18, 18)
   primary:SetScript("OnClick", function()
-    if Localog.probe.armed or Localog.probe.result then
-      Localog:ResetProbe()
-    else
-      Localog:ArmProbe()
+    local session = Localog.session
+    if session.state == "idle" then
+      Localog:StartPracticeCapture()
+    elseif session.state == "armed" or session.state == "captured" then
+      Localog:CancelSession()
+    elseif session.state == "ready" then
+      Localog:StartPracticeCapture()
+    elseif session.state == "stopping" then
+      Localog:RetryStop()
+    elseif session.state == "limited" then
+      if session.retryAction == "reset" then
+        Localog:ResetSession()
+      else
+        Localog:RetryPreflight()
+      end
     end
   end)
 
   local evidence = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
-  evidence:SetSize(170, 26)
+  evidence:SetSize(110, 28)
   evidence:SetPoint("BOTTOMRIGHT", -18, 18)
   evidence:SetText("Copy evidence")
   evidence:SetScript("OnClick", function()
     Localog:ShowEvidence()
   end)
 
+  local dismiss = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
+  dismiss:SetSize(110, 28)
+  dismiss:SetPoint("RIGHT", evidence, "LEFT", -8, 0)
+  dismiss:SetText("Dismiss")
+  dismiss:SetScript("OnClick", function()
+    Localog:ResetSession()
+  end)
+
+  frame:SetScript("OnUpdate", function(_, elapsed)
+    UI.refreshElapsed = (UI.refreshElapsed or 0) + elapsed
+    if UI.refreshElapsed >= 0.25 then
+      UI.refreshElapsed = 0
+      if Localog.session.retryAt then
+        UI:Refresh()
+      end
+    end
+  end)
+
+  frame.state = state
   frame.status = status
+  frame.checks = checks
   frame.primary = primary
+  frame.dismiss = dismiss
   self.frame = frame
   self.evidenceFrame = createEvidenceFrame()
   self:Refresh()
@@ -212,36 +369,54 @@ function UI:Refresh()
     return
   end
 
+  local session = Localog.session
   local probe = Localog.probe
-  if probe.armed then
-    self.frame.status:SetText(
-      "Armed. Start a target-dummy pull. Aura data will be inspected synchronously when the Combat restriction begins."
+  local retrySeconds = Localog:GetLoggingRetrySeconds()
+  self.frame.state:SetText("State: " .. string.upper(session.state))
+  self.frame.status:SetText(getStatusText(session, retrySeconds))
+
+  local snapshotReady = probe.result ~= nil
+    and (probe.result.status == "complete" or probe.result.status == "partial")
+  self.frame.checks:SetText(table.concat({
+    checkLabel(session.advancedLogging, "Advanced logging enabled", "Advanced logging disabled"),
+    getLoggingCheck(session),
+    checkLabel(snapshotReady, "Pull-boundary snapshot captured", "Snapshot not captured"),
+    checkLabel(session.simcPublicAPI, "SimulationCraft API available", "SimulationCraft API unavailable"),
+  }, "\n"))
+
+  self.frame.dismiss:Hide()
+  if session.state == "idle" then
+    self.frame.primary:SetText("Start practice capture")
+    setButtonEnabled(self.frame.primary, true)
+  elseif session.state == "starting" then
+    self.frame.primary:SetText("Starting...")
+    setButtonEnabled(self.frame.primary, false)
+  elseif session.state == "armed" then
+    self.frame.primary:SetText("Cancel capture")
+    setButtonEnabled(self.frame.primary, true)
+  elseif session.state == "captured" then
+    self.frame.primary:SetText("Cancel after combat")
+    setButtonEnabled(self.frame.primary, true)
+  elseif session.state == "stopping" then
+    self.frame.primary:SetText(
+      session.retryAction == "stop" and "Stop combat logging" or "Waiting for combat..."
     )
-    self.frame.primary:SetText("Cancel probe")
-  elseif probe.result then
-    local result = probe.result
-    if result.status == "complete" then
-      self.frame.status:SetText(
-        string.format("Complete: %d readable helpful auras. Copy the sanitized evidence.", #result.auras)
-      )
-    elseif result.status == "partial" then
-      self.frame.status:SetText(string.format(
-        "Partial: %d readable auras; %d secret and %d invalid entries skipped.",
-        #result.auras,
-        result.skippedSecret,
-        result.skippedInvalid
-      ))
-    else
-      self.frame.status:SetText(
-        "Unavailable (" .. valueOrUnknown(result.reason) .. "). Copy the evidence before resetting."
-      )
+    setButtonEnabled(self.frame.primary, retrySeconds == 0 and session.retryAction == "stop")
+    if session.retryAction == "stop" then
+      self.frame.dismiss:Show()
     end
-    self.frame.primary:SetText("Reset probe")
+  elseif session.state == "ready" then
+    self.frame.primary:SetText("Start another capture")
+    setButtonEnabled(self.frame.primary, true)
   else
-    self.frame.status:SetText(
-      "Development evidence probe. Arm it out of combat, then begin a target-dummy pull. No data survives /reload."
-    )
-    self.frame.primary:SetText("Arm probe")
+    self.frame.dismiss:Show()
+    if session.retryAction == "reset" then
+      self.frame.primary:SetText("Reset capture")
+      setButtonEnabled(self.frame.primary, true)
+    else
+      self.frame.primary:SetText(retrySeconds > 0 and "Retry preflight (wait)" or "Retry preflight")
+      setButtonEnabled(self.frame.primary, retrySeconds == 0)
+    end
   end
 end
 
@@ -258,7 +433,7 @@ function UI:ShowEvidence(text)
   end
 
   local _, lineBreaks = string.gsub(text, "\n", "")
-  self.evidenceFrame.editBox:SetHeight(math.max(340, (lineBreaks + 1) * 15))
+  self.evidenceFrame.editBox:SetHeight(math.max(380, (lineBreaks + 1) * 15))
   self.evidenceFrame.editBox:SetText(text)
   self.evidenceFrame:Show()
   self.evidenceFrame.editBox:SetFocus()

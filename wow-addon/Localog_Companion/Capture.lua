@@ -227,4 +227,6 @@ function Capture:OnRestrictionStateChanged(restrictionType, restrictionState)
   else
     probe.snapshot = nil
   end
+
+  Localog:OnCaptureFinished(result)
 end

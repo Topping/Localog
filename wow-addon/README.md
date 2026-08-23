@@ -1,34 +1,48 @@
 # Localog Companion
 
-`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. The eventual addon will guide combat logging, capture readable helpful player auras at the combat restriction boundary, and append the snapshot to a SimulationCraft addon profile.
+`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging and captures readable helpful player auras at the combat restriction boundary. A later implementation slice will append that snapshot to a SimulationCraft profile for one-copy import.
 
-This first implementation is the **CA-00 evidence spike only**. It does not control combat logging or modify `/simc` output yet. It retains all observations in memory and never saves character or aura data to SavedVariables.
+The current `0.2.0` build implements CA-01: a memory-only recording session, advanced-combat-logging preflight, ownership-safe combat log control, the proven CA-00 aura capture, and a guided status panel. It does not yet generate the combined `/simc` export. No session or character data survives `/reload`.
 
-## Install the evidence spike
+## Install
 
 1. Install and enable the SimulationCraft addon.
 2. Copy `wow-addon/Localog_Companion` into the Retail client's `Interface/AddOns` directory.
 3. Start or reload Retail World of Warcraft 12.1.
 4. Confirm that both SimulationCraft and Localog Companion are enabled.
 
-The addon declares SimulationCraft as a required dependency so its eventual public API integration has deterministic load order.
+The addon declares SimulationCraft as a required dependency so its public API has deterministic load order.
 
-## Run the target-dummy probe
+## Run a practice capture
 
-1. Stand at the target dummy and leave combat.
-2. Run `/localog`, then click **Arm probe**.
-3. Begin a normal target-dummy pull.
-4. When the Combat restriction activates, the addon synchronously inspects only `HELPFUL` auras on `player`.
-5. After the pull, click **Copy evidence** and retain the sanitized result for updating the CA-00 observation table below.
+1. Stand at the target dummy while out of combat and unrestricted.
+2. Run `/localog` and click **Start practice capture**.
+3. Confirm that the panel reaches **ARMED** and shows advanced logging, combat logging, and the SimulationCraft API as available.
+4. Begin a normal target-dummy pull. The panel should change to **CAPTURED** at the pull boundary.
+5. Leave combat normally. If Localog started logging, the panel will stop it after restrictions clear and then show **READY**. If logging was already active, Localog leaves it active and says so.
+6. Click **Copy evidence** and share the sanitized CA-01 result when testing this build.
 
-The development probe may be armed while a non-Combat restriction (such as a map restriction) is already active. This is intentional for CA-00 evidence gathering. It never reads an aura index that `C_Secrets.ShouldUnitAuraIndexBeSecret` declares secret. A failed secrecy predicate, indexed API error, inaccessible terminator, or exhausted 255-entry bound makes the whole snapshot unavailable.
+The panel treats an unknown `LoggingCombat` result as rate limiting, shows a ten-second recovery countdown, and requires an explicit retry. It never assumes ownership after an unknown result. If an owned stop cannot be confirmed, **Stop combat logging** remains available; **Dismiss** intentionally abandons the in-memory session so logging must then be checked manually.
 
 Slash commands:
 
-- `/localog` opens the probe panel.
-- `/localog arm` arms the probe.
-- `/localog copy` opens and selects the sanitized evidence.
-- `/localog reset` discards the in-memory observation.
+- `/localog` opens the panel.
+- `/localog start` starts the same hardware-initiated preflight as the panel button (`arm` remains an alias).
+- `/localog retry` retries a rate-limited preflight or logging stop.
+- `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
+- `/localog copy` opens and selects sanitized evidence.
+
+## In-game verification requested for CA-01
+
+The first client pass should cover these ownership paths:
+
+1. Start with combat logging off. Complete one pull and verify the panel progresses `idle -> armed -> captured -> ready`, with `logging_started_by_session=true` and `logging_active=false` at ready.
+2. Turn combat logging on before starting. Complete one pull and verify `logging_was_preexisting=true`, `logging_owned=false`, and combat logging remains on at ready.
+3. Start a capture and cancel before combat. If Localog owned logging, verify it returns to off and the panel returns to idle.
+4. Use `/reload` while logging is on, open the panel, and verify it reports logging as unknown until a new preflight; a new preflight must treat the active logger as pre-existing and never stop it.
+5. If a rate-limit result occurs naturally, verify the action is disabled during the countdown and becomes retryable without automatic polling.
+
+The evidence block contains state, ownership, advanced-logging status, retry status, restriction transitions, and aggregate aura results. It excludes character names, player GUIDs, source GUIDs, and spell IDs.
 
 ## CA-00 evidence status
 
@@ -43,14 +57,15 @@ Slash commands:
 
 The verified capture also reported `InCombatLockdown=false`, matching the expected pre-enforcement boundary, and detected the public SimulationCraft API. A future supported-build regression that makes the collection unavailable is a new no-go signal: stop capture work and revise the product design rather than weakening secrecy checks or deriving hidden values.
 
-## Safety boundary
+## Safety and ownership boundaries
 
 The capture handler runs directly inside `ADDON_RESTRICTION_STATE_CHANGED` for `Combat/Activating`; it does not defer work through a timer. Each indexed aura query is protected with `pcall`, and secret-capable values are checked before comparison, conversion, formatting, or storage. Only ordinary spell IDs, normalized applications, and readable source GUIDs can survive the handler.
 
-The copied evidence deliberately excludes character names, player GUIDs, source GUIDs, and spell IDs. It includes only client/build context, map ID, restriction states and ordering, aggregate counts, and bounded failure codes.
+The start button refuses preflight if any supported addon restriction is active or a restriction state is unknown. It enables `advancedCombatLogging` when necessary and leaves that preference enabled. Combat logging calls use a local five-calls-per-ten-seconds budget in addition to handling the API's shared rate limit. Automatic stop is permitted only after the same in-memory session observed logging off and received a confirmed `true` result when enabling it. Reloaded or pre-existing logging is never claimed or automatically stopped.
 
-API references used for the spike:
+API references:
 
+- [LoggingCombat](https://warcraft.wiki.gg/wiki/API:LoggingCombat)
 - [ADDON_RESTRICTION_STATE_CHANGED](https://warcraft.wiki.gg/wiki/ADDON_RESTRICTION_STATE_CHANGED)
 - [Blizzard restricted-action API definitions](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/RestrictedActionsDocumentation.lua)
 - [Blizzard secret predicate API definitions](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/SecretPredicateAPIDocumentation.lua)
