@@ -1,6 +1,7 @@
 import { EventType, type Buff, type CombatantInfoEvent, type Item } from 'parser/core/Events';
 
 import type { LocalDiagnostic } from '../../LocalCombatLogParser';
+import type { CompanionCombatantStats } from '../companion/contracts';
 import {
   type ParsedSimcAddonProfile,
   type SimcResult,
@@ -48,6 +49,7 @@ export interface BuildCombatantInfoOptions {
   readonly build: TargetDummyBuildBinding;
   readonly timestamp: number;
   readonly factionChoice?: 1 | 2;
+  readonly pullTimeStats?: CompanionCombatantStats;
   readonly pullTimeAuras?: {
     readonly auras: readonly Buff[];
     readonly diagnostics: readonly LocalDiagnostic[];
@@ -137,7 +139,7 @@ export function buildCombatantInfoEvent(
         gear,
         auras: [...(options.pullTimeAuras?.auras ?? [])],
         faction: validated.value.faction,
-        ...zeroStats,
+        ...(options.pullTimeStats ?? zeroStats),
         talentTree: options.talents.talents.map((talent) => ({
           nodeID: talent.nodeId,
           id: talent.entryId,
@@ -147,12 +149,16 @@ export function buildCombatantInfoEvent(
         pvpTalents: [],
       },
       diagnostics: [
-        {
-          line: 0,
-          severity: 'warning',
-          message:
-            'Live combatant ratings are unavailable in the Localog Companion export and were defaulted to zero.',
-        },
+        ...(options.pullTimeStats === undefined
+          ? [
+              {
+                line: 0,
+                severity: 'warning' as const,
+                message:
+                  'Live combatant ratings are unavailable in this export and were defaulted to zero.',
+              },
+            ]
+          : []),
         ...(options.pullTimeAuras?.diagnostics ?? [
           {
             line: 0,

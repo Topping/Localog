@@ -106,6 +106,77 @@ local function readCaptureTime()
   return capturedAt
 end
 
+local function readEffectiveUnitStat(statIndex)
+  local ok, _, effectiveStat = pcall(UnitStat, "player", statIndex)
+  if not ok
+    or not Localog:IsAccessible(effectiveStat)
+    or not isIntegerInRange(effectiveStat, 0, 2147483647)
+  then
+    return nil
+  end
+
+  return effectiveStat
+end
+
+local function readCombatRating(ratingIndex)
+  local ok, rating = pcall(GetCombatRating, ratingIndex)
+  if not ok
+    or not Localog:IsAccessible(rating)
+    or not isIntegerInRange(rating, 0, 2147483647)
+  then
+    return nil
+  end
+
+  return rating
+end
+
+local function readArmor()
+  local ok, _, effectiveArmor = pcall(UnitArmor, "player")
+  if not ok
+    or not Localog:IsAccessible(effectiveArmor)
+    or not isIntegerInRange(effectiveArmor, 0, 2147483647)
+  then
+    return nil
+  end
+
+  return effectiveArmor
+end
+
+local function snapshotCombatantStats()
+  local stats = {
+    strength = readEffectiveUnitStat(1),
+    agility = readEffectiveUnitStat(2),
+    stamina = readEffectiveUnitStat(3),
+    intellect = readEffectiveUnitStat(4),
+    dodge = readCombatRating(CR_DODGE),
+    parry = readCombatRating(CR_PARRY),
+    block = readCombatRating(CR_BLOCK),
+    critMelee = readCombatRating(CR_CRIT_MELEE),
+    critRanged = readCombatRating(CR_CRIT_RANGED),
+    critSpell = readCombatRating(CR_CRIT_SPELL),
+    speed = readCombatRating(CR_SPEED),
+    leech = readCombatRating(CR_LIFESTEAL),
+    hasteMelee = readCombatRating(CR_HASTE_MELEE),
+    hasteRanged = readCombatRating(CR_HASTE_RANGED),
+    hasteSpell = readCombatRating(CR_HASTE_SPELL),
+    avoidance = readCombatRating(CR_AVOIDANCE),
+    mastery = readCombatRating(CR_MASTERY),
+    armor = readArmor(),
+  }
+  local versatility = readCombatRating(CR_VERSATILITY_DAMAGE_DONE)
+  stats.versatilityDamageDone = versatility
+  stats.versatilityHealingDone = versatility
+  stats.versatilityDamageReduction = versatility
+
+  for _, key in ipairs(Localog.Protocol.statKeys) do
+    if stats[key] == nil then
+      return nil
+    end
+  end
+
+  return stats
+end
+
 local function unavailable(reason, details)
   local result = details or {}
   result.status = "unavailable"
@@ -125,6 +196,11 @@ local function snapshotHelpfulAuras(context)
   local capturedAt = readCaptureTime()
   if not capturedAt then
     return unavailable("capture_time_unavailable")
+  end
+
+  local stats = snapshotCombatantStats()
+  if not stats then
+    return unavailable("combatant_stats_unavailable")
   end
 
   local shouldAurasBeSecret = safePredicate(C_Secrets.ShouldAurasBeSecret)
@@ -273,6 +349,7 @@ local function snapshotHelpfulAuras(context)
     clientToc = context and context.clientToc,
     capturedAt = capturedAt,
     trigger = "combat_activating",
+    stats = stats,
     auras = normalizedAuras,
     skippedSecret = skippedSecret,
     skippedInvalid = skippedInvalid,

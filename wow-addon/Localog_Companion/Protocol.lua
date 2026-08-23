@@ -1,7 +1,7 @@
 local _, Localog = ...
 
 local Protocol = {
-  schema = 1,
+  schema = 2,
   maximumAuras = 255,
   maximumBlockBytes = 65536,
   maximumLineBytes = 512,
@@ -9,6 +9,30 @@ local Protocol = {
   endMarker = "### End Localog Companion Snapshot",
 }
 Localog.Protocol = Protocol
+
+Protocol.statKeys = {
+  "strength",
+  "agility",
+  "stamina",
+  "intellect",
+  "dodge",
+  "parry",
+  "block",
+  "critMelee",
+  "critRanged",
+  "critSpell",
+  "speed",
+  "leech",
+  "hasteMelee",
+  "hasteRanged",
+  "hasteSpell",
+  "avoidance",
+  "mastery",
+  "versatilityDamageDone",
+  "versatilityHealingDone",
+  "versatilityDamageReduction",
+  "armor",
+}
 
 local MAX_INTEGER = 2147483647
 local MAX_SAFE_INTEGER = 9007199254740991
@@ -159,6 +183,20 @@ local function validateAuraOrder(auras)
   return true
 end
 
+local function validateStats(stats)
+  if type(stats) ~= "table" then
+    return false, "stats_missing"
+  end
+
+  for _, key in ipairs(Protocol.statKeys) do
+    if not isIntegerInRange(stats[key], 0, MAX_INTEGER) then
+      return false, "stats_invalid"
+    end
+  end
+
+  return true
+end
+
 function Protocol:ValidateSnapshot(snapshot, generatedAt)
   if type(snapshot) ~= "table" then
     return false, "snapshot_missing"
@@ -206,6 +244,10 @@ function Protocol:ValidateSnapshot(snapshot, generatedAt)
   then
     return false, "partial_without_skipped_entries"
   end
+  local statsValid, statsReason = validateStats(snapshot.stats)
+  if not statsValid then
+    return false, statsReason
+  end
   if type(snapshot.auras) ~= "table" or #snapshot.auras > self.maximumAuras then
     return false, "aura_count_invalid"
   end
@@ -245,6 +287,14 @@ function Protocol:SerializeSnapshot(snapshot, generatedAt)
     or not field("skipped_secret", snapshot.skippedSecret)
     or not field("skipped_invalid", snapshot.skippedInvalid)
   then
+    return nil, "line_size_exceeded"
+  end
+
+  local serializedStats = {}
+  for _, key in ipairs(self.statKeys) do
+    serializedStats[#serializedStats + 1] = tostring(snapshot.stats[key])
+  end
+  if not field("stats", table.concat(serializedStats, ",")) then
     return nil, "line_size_exceeded"
   end
 

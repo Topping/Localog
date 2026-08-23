@@ -1,4 +1,4 @@
-export const COMPANION_SCHEMA_VERSION = 1;
+export const COMPANION_SCHEMA_VERSION = 2;
 
 export type CompanionSnapshotFailureCode =
   | 'COMPANION_BLOCK_MALFORMED'
@@ -22,8 +22,33 @@ export interface CompanionAuraSnapshotRecord {
   readonly sourceGuid: string | null;
 }
 
+/** Combat-log rating fields captured at the same pull boundary as the aura snapshot. */
+export interface CompanionCombatantStats {
+  readonly strength: number;
+  readonly agility: number;
+  readonly stamina: number;
+  readonly intellect: number;
+  readonly dodge: number;
+  readonly parry: number;
+  readonly block: number;
+  readonly critMelee: number;
+  readonly critRanged: number;
+  readonly critSpell: number;
+  readonly speed: number;
+  readonly leech: number;
+  readonly hasteMelee: number;
+  readonly hasteRanged: number;
+  readonly hasteSpell: number;
+  readonly avoidance: number;
+  readonly mastery: number;
+  readonly versatilityDamageDone: number;
+  readonly versatilityHealingDone: number;
+  readonly versatilityDamageReduction: number;
+  readonly armor: number;
+}
+
 export interface CompanionSnapshot {
-  readonly schema: 1;
+  readonly schema: 2;
   readonly addonVersion: string;
   readonly playerGuid: string;
   readonly clientVersion: string;
@@ -34,6 +59,7 @@ export interface CompanionSnapshot {
   readonly completeness: 'complete' | 'partial';
   readonly skippedSecret: number;
   readonly skippedInvalid: number;
+  readonly stats: CompanionCombatantStats;
   readonly auras: readonly CompanionAuraSnapshotRecord[];
 }
 

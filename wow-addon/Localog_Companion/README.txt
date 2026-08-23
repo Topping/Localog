@@ -1,8 +1,8 @@
-LOCALOG COMPANION 0.5.1
+LOCALOG COMPANION 0.6.0
 =======================
 
-Localog Companion records one target-dummy attempt and adds the readable pull-time
-auras to a fresh SimulationCraft profile. It does not upload anything.
+Localog Companion records one target-dummy attempt and adds pull-time character
+stats and readable auras to a fresh SimulationCraft profile. It does not upload anything.
 
 REQUIREMENTS
 
@@ -38,11 +38,13 @@ old, it will still export; choose the attempt that belongs to that capture.
 
 PRIVACY
 
-- The addon reads only helpful auras affecting the current player at pull activation.
+- The addon reads the current player's effective primary stats, armor, combat ratings,
+  and helpful auras at pull activation.
 - It stores the snapshot only in memory. /reload, logout, or a client crash clears it.
 - It has no networking, uploads, addon communication, or SavedVariables.
 - The combined clipboard text contains the normal SimulationCraft character profile,
-  the player GUID, readable aura spell/source IDs, client build, and capture time.
+  the player GUID, pull-time stats, readable aura spell/source IDs, client build,
+  and capture time.
   Treat that text as private.
 - Localog processes the chosen combat log in the browser and does not upload the file.
 
@@ -53,7 +55,8 @@ LIMITATIONS AND RECOVERY
 - If logging is rate-limited, wait for the panel countdown and use Retry or
   Stop combat logging. The addon never assumes an unknown result succeeded.
 - A partial snapshot exports only safely readable auras and reports exact skipped
-  counts. An unavailable snapshot is never replaced with stale aura data.
+  counts. Character stats are all-or-nothing; an unavailable value prevents a
+  snapshot rather than silently substituting zero. Stale data is never reused.
 - Aura durations, expiration times, hostile units, and other players are not captured.
 - Aura sources that Localog cannot resolve safely are omitted rather than fabricated.
 - Localog trusts the character and attempt selected in its UI. Choose the attempt that

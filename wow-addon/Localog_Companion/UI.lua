@@ -341,7 +341,7 @@ function UI:ShowText(text, title)
 end
 
 function UI:ShowSnapshot(text)
-  self:ShowText(text, "Localog protocol v1 snapshot")
+  self:ShowText(text, "Localog protocol v2 snapshot")
 end
 
 function UI:ShowExport(text)

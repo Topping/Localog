@@ -79,6 +79,7 @@ export function prepareTargetDummyInput(
     build,
     timestamp: session.fightStart,
     factionChoice: input.factionChoice,
+    pullTimeStats: companionBinding.value?.stats,
     pullTimeAuras,
   });
   if (!combatantInfo.ok) {

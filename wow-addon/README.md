@@ -1,8 +1,8 @@
 # Localog Companion
 
-`Localog_Companion` is a standalone World of Warcraft addon for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and appends its bounded protocol v1 snapshot to a fresh SimulationCraft profile for one-copy import.
+`Localog_Companion` is a standalone World of Warcraft addon for Localog's target-dummy importer. It guides combat logging, captures combat-log-compatible character stats and readable helpful player auras at the combat restriction boundary, and appends its bounded protocol v2 snapshot to a fresh SimulationCraft profile for one-copy import.
 
-The current `0.5.1` build contains the complete version-one addon flow plus the first post-CA-06 UX cleanup, and the browser importer implements CA-05 aura materialization. **Copy for Localog** uses the strict combined-export builder: it validates the underlying character profile's checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
+The current `0.6.0` build adds exact pull-time primary stats, armor, and combat ratings to the complete version-one addon flow. **Copy for Localog** uses the strict combined-export builder: it validates the underlying character profile's checksum, inserts the exact comment-only [protocol v2](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
 
 ## Install
 
@@ -44,19 +44,27 @@ Slash commands:
 - `/localog retry` retries a rate-limited preflight or logging stop.
 - `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
 - `/localog export` generates a fresh SimC profile, adds the ready snapshot, verifies and recalculates its checksum, and opens the selected combined export.
-- `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
+- `/localog snapshot` opens and selects the raw protocol v2 snapshot after the session reaches **READY**.
 - `/localog copy` opens the same fresh combined export as `/localog export`.
 
 ## Privacy and limitations
 
-- The addon reads only `HELPFUL` auras affecting the current player during the synchronous Combat `Activating` event. It does not collect rotations, combat events, hostile units, other players, aura durations, expiration times, health, resources, or positions.
+- The addon reads the current player's effective primary stats, armor, combat ratings, and `HELPFUL` auras during the synchronous Combat `Activating` event. It does not collect rotations, combat events, hostile units, other players, aura durations, expiration times, health, resources, or positions.
 - The snapshot exists only in Lua memory. It is never placed in SavedVariables and is cleared by `/reload`, logout, or a client crash. The addon performs no upload, networking, addon communication, filesystem read, or browser interaction.
-- The combined clipboard value contains the character profile plus player/source GUIDs, aura spell IDs and stacks, client build, and capture time. Treat it as private.
+- The combined clipboard value contains the character profile plus pull-time stats, player/source GUIDs, aura spell IDs and stacks, client build, and capture time. Treat it as private.
 - Localog parses the selected combat-log file in the browser and stores the normalized report in that browser origin's IndexedDB. The local file is not uploaded by this workflow.
-- Version one supports Retail project 1, combat-log version 22, WoW 12.1.0/TOC 120100, protocol schema 1, and the matching checked-in talent snapshot. The log, companion snapshot, and SimC profile must describe the same supported build.
+- The first release supports Retail project 1, combat-log version 22, WoW 12.1.0/TOC 120100, protocol schema 2, and the matching checked-in talent snapshot. The log, companion snapshot, and SimC profile must describe the same supported build.
 - Complete capture is not guaranteed. Partial captures preserve only safely readable records and report exact skip counts. An unavailable capture produces no companion block, and stale aura data is never substituted automatically.
-- Localog omits aura records whose source cannot resolve uniquely in the selected log; it never fabricates the selected player as caster. Pull-time ratings, aura duration/expiration, and other unavailable metadata remain unavailable.
+- Character stats are all-or-nothing: if any value is inaccessible or invalid, the addon emits no snapshot instead of substituting zero. Localog omits aura records whose source cannot resolve uniquely in the selected log; it never fabricates the selected player as caster. Aura duration/expiration and other unavailable metadata remain unavailable.
 - The user-selected attempt is authoritative. Localog checks player and build identity but does not reject another attempt by comparing capture time; choose the matching attempt in the UI.
+
+## Pull-time stat capture
+
+Version `0.6.0` advances the companion contract to protocol v2. Its single `stats` record carries 21 bounded integers in Retail `COMBATANT_INFO` order: effective primary attributes, dodge/parry/block, the melee/ranged/spell crit and haste ratings, speed, leech, avoidance, mastery, three versatility fields, and effective armor. The browser validates the complete bundle and places it directly on the synthetic combatant-info event, so normal analyzer rating conversion produces the report's displayed percentages.
+
+The bundle is fail-closed and all-or-nothing. Capture happens synchronously at Combat `Activating`; any missing, secret, non-integer, or out-of-range result makes that attempt unavailable instead of creating a plausible-looking report with zeros. Protocol v1 blocks are no longer accepted: update both Localog and the addon, then make a fresh capture.
+
+Retail validation for this release should compare the character sheet immediately before the pull with the imported report's **Stats on pull**. Crit, haste, mastery, versatility, primary attribute, and armor should reflect the captured character. Temporary pre-pull effects present at combat activation should be included.
 
 ## CA-06 release-candidate verification
 
@@ -85,7 +93,7 @@ The CA-06 repository release gate passes: the standalone source/package validato
 
 The importer never treats an unknown source as the selected player. Records with `-`, an absent actor, or an ambiguous actor mapping are omitted with aggregate diagnostics, and accepted source actors are attached to the synthetic fight. A complete snapshot replaces the old missing-aura warning; a partial snapshot reports the addon's exact secret/invalid skip counts plus any source-resolution omissions. Plain `/simc` imports retain the existing empty aura list and warning.
 
-The paste field shows a compact **Pull snapshot: N auras captured** summary as soon as a structurally valid combined export and checksum are present, including complete/partial state and exact addon skip counters.
+The paste field shows a compact **Pull snapshot: stats and N auras captured** summary as soon as a structurally valid combined export and checksum are present, including complete/partial state and exact addon skip counters.
 
 ## CA-04 browser test status
 

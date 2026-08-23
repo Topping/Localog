@@ -49,14 +49,15 @@ Enable GitHub Pages with **GitHub Actions** as its source. The workflow runs for
 
 - Local imports currently target current Retail advanced combat logs. Incompatible parser/schema versions are recoverable by deleting and re-importing the report.
 - A standalone target-dummy capture uses the same file picker. The optional, separately installable
-  `wow-addon/Localog_Companion` addon guides advanced logging, records one readable pull-time aura
-  snapshot, and produces a single Localog Companion export. After discovery, choose the matching
+  `wow-addon/Localog_Companion` addon guides advanced logging, records pull-time character stats and
+  one readable aura snapshot, and produces a single Localog Companion export. After discovery, choose the matching
   player and attempt and paste that value. Files containing a usable genuine encounter follow the
   encounter path and do not offer nearby unmarked dummy activity.
 - Target-dummy preparation currently supports only Retail project 1, combat-log version 22, WoW
   12.1.0, and its checked-in talent snapshot. Character identity, spec, decoded talents, equipped
-  items, and safely sourced pull-time auras come from the Localog Companion export. Unavailable live
-  ratings remain explicit zero defaults, partial/source omissions are reported, and an equipped item
+  items, exact pull-time ratings/effective attributes, and safely sourced pull-time auras come from
+  the Localog Companion export. Plain `/simc` imports retain explicit zero defaults; companion stat
+  capture is all-or-nothing, partial/source aura omissions are reported, and an equipped item
   without an item level blocks import. Player/build identity is enforced, while the user's selected
   attempt is authoritative.
 - Target-dummy discovery and normalization stay in the browser worker. Only the selected attempt's

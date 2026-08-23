@@ -1,10 +1,10 @@
 # Localog companion snapshot protocol
 
-Status: protocol version 1
+Status: protocol version 2
 
 Last updated: 2026-08-23
 
-This document defines the text contract between `Localog_Companion` and Localog's target-dummy importer. Version 1 carries the player's readable helpful auras at the instant WoW announces that the combat addon restriction is activating.
+This document defines the text contract between `Localog_Companion` and Localog's target-dummy importer. Version 2 carries the player's combat-log-compatible character stats and readable helpful auras at the instant WoW announces that the combat addon restriction is activating.
 
 The companion block is embedded in a SimulationCraft addon profile immediately before its terminal checksum. Every companion line is a SimulationCraft comment, so consumers that do not understand the extension can ignore it.
 
@@ -30,8 +30,8 @@ talents=BYEA...
 # ...ordinary SimulationCraft equipment and comments...
 
 ### Localog Companion Snapshot
-# localog.schema=1
-# localog.addon_version=0.3.0
+# localog.schema=2
+# localog.addon_version=0.6.0
 # localog.player_guid=Player-1234-0ABCDEF0
 # localog.client_version=12.1.0
 # localog.client_build=69299
@@ -41,6 +41,7 @@ talents=BYEA...
 # localog.completeness=complete
 # localog.skipped_secret=0
 # localog.skipped_invalid=0
+# localog.stats=1944,513,30352,334,0,0,0,1186,1186,1186,98,52,276,276,276,0,1175,34,34,34,1956
 # localog.aura=465,1,Player-1234-0ABCDEF0
 # localog.aura=6673,1,Player-5678-01234567
 # localog.aura=383648,3,-
@@ -84,14 +85,20 @@ Each aura uses:
 # localog.aura=<spell_id>,<applications>,<source_guid>
 ```
 
+The stat bundle uses:
+
+```text
+# localog.stats=<21 comma-separated integers>
+```
+
 Protocol text is ASCII. Numeric fields are unsigned base-10 integers with no sign, decimal point, exponent, grouping, or leading zero except the value `0` itself.
 
 The fields MUST appear in this order:
 
 | Field             |  Count | Grammar and meaning                                                                                                     |
 | ----------------- | -----: | ----------------------------------------------------------------------------------------------------------------------- |
-| `schema`          |      1 | Exact value `1`.                                                                                                        |
-| `addon_version`   |      1 | SemVer core `MAJOR.MINOR.PATCH`; each component is `0..65535`. No prerelease/build suffix in v1.                        |
+| `schema`          |      1 | Exact value `2`.                                                                                                        |
+| `addon_version`   |      1 | SemVer core `MAJOR.MINOR.PATCH`; each component is `0..65535`. No prerelease/build suffix in v2.                        |
 | `player_guid`     |      1 | Readable `UnitGUID("player")`; `Player-` prefix followed by ASCII letters, digits, or hyphens; 8..128 characters total. |
 | `client_version`  |      1 | Dot-separated numeric WoW version with 2..4 components, each `0..65535`.                                                |
 | `client_build`    |      1 | Positive integer `1..2147483647`.                                                                                       |
@@ -101,11 +108,42 @@ The fields MUST appear in this order:
 | `completeness`    |      1 | `complete` or `partial`.                                                                                                |
 | `skipped_secret`  |      1 | Integer `0..255`.                                                                                                       |
 | `skipped_invalid` |      1 | Integer `0..255`.                                                                                                       |
+| `stats`           |      1 | The fixed-order, all-or-nothing 21-integer combatant stat bundle defined below.                                         |
 | `aura`            | 0..255 | One normalized aura record. Repeated only in this contiguous section.                                                   |
 
-Unknown fields are unsupported in schema 1 and MUST cause a typed unsupported-protocol failure. A future schema version can define compatible extension rules explicitly.
+Unknown fields are unsupported in schema 2 and MUST cause a typed unsupported-protocol failure. A future schema version can define compatible extension rules explicitly.
 
 The complete block, including markers and LF line separators but excluding the SimulationCraft checksum line, MUST be no larger than 64 KiB. Every protocol line MUST be no larger than 512 bytes. These limits sit inside the SimC parser's existing whole-profile bounds.
+
+## Combatant stats
+
+The `stats` record contains exactly 21 unsigned integers in the same semantic order as the stat portion of Retail `COMBATANT_INFO`:
+
+| Position | Browser field                | WoW source                                              |
+| -------: | ---------------------------- | ------------------------------------------------------- |
+|        1 | `strength`                   | `UnitStat("player", 1)` effective value                 |
+|        2 | `agility`                    | `UnitStat("player", 2)` effective value                 |
+|        3 | `stamina`                    | `UnitStat("player", 3)` effective value                 |
+|        4 | `intellect`                  | `UnitStat("player", 4)` effective value                 |
+|        5 | `dodge`                      | `GetCombatRating(CR_DODGE)`                             |
+|        6 | `parry`                      | `GetCombatRating(CR_PARRY)`                             |
+|        7 | `block`                      | `GetCombatRating(CR_BLOCK)`                             |
+|        8 | `critMelee`                  | `GetCombatRating(CR_CRIT_MELEE)`                        |
+|        9 | `critRanged`                 | `GetCombatRating(CR_CRIT_RANGED)`                       |
+|       10 | `critSpell`                  | `GetCombatRating(CR_CRIT_SPELL)`                        |
+|       11 | `speed`                      | `GetCombatRating(CR_SPEED)`                             |
+|       12 | `leech`                      | `GetCombatRating(CR_LIFESTEAL)`                         |
+|       13 | `hasteMelee`                 | `GetCombatRating(CR_HASTE_MELEE)`                       |
+|       14 | `hasteRanged`                | `GetCombatRating(CR_HASTE_RANGED)`                      |
+|       15 | `hasteSpell`                 | `GetCombatRating(CR_HASTE_SPELL)`                       |
+|       16 | `avoidance`                  | `GetCombatRating(CR_AVOIDANCE)`                         |
+|       17 | `mastery`                    | `GetCombatRating(CR_MASTERY)`                           |
+|    18–20 | the three versatility fields | `GetCombatRating(CR_VERSATILITY_DAMAGE_DONE)`, repeated |
+|       21 | `armor`                      | `UnitArmor("player")` effective armor                   |
+
+Every value MUST be an ordinary, non-secret integer in `0..2147483647`. The addon MUST read the complete bundle synchronously in the same Combat `Activating` handler as the aura scan. If any API call fails or any value is unavailable, secret, non-numeric, fractional, or out of range, the entire snapshot is unavailable and MUST NOT be emitted. Zero-filling an unavailable field is forbidden.
+
+The importer places these values directly on the synthesized `CombatantInfoEvent`. They are ratings/effective attributes, not displayed percentages; Localog's normal stat conversion calculates percentages for the report.
 
 ## Aura records
 
@@ -131,11 +169,11 @@ An aura record has exactly three comma-separated fields:
 - Is either `-` for unavailable or an ordinary readable WoW GUID.
 - A GUID MUST contain only ASCII letters, digits, and hyphens and be `3..128` characters.
 - `-` means unknown. It MUST NOT be interpreted as self-cast.
-- Version 1 intentionally does not include a source name or unit token.
+- Version 2 intentionally does not include a source name or unit token.
 
 The exporter MUST sort records by numeric `spell_id`, then lexicographically by `source_guid`. Duplicate `(spell_id, source_guid)` pairs are forbidden. If capture returns duplicates, the exporter collapses them to one record with the largest `applications` value before sorting.
 
-The importer MUST reject records that are unsorted, duplicated, malformed, out of bounds, or not helpful according to the version 1 contract. The importer MAY omit a structurally valid aura whose source cannot be represented safely in the analysis actor model, but it MUST emit a diagnostic and MUST NOT substitute the selected player as caster.
+The importer MUST reject records that are unsorted, duplicated, malformed, out of bounds, or not helpful according to the version 2 contract. The importer MAY omit a structurally valid aura whose source cannot be represented safely in the analysis actor model, but it MUST emit a diagnostic and MUST NOT substitute the selected player as caster.
 
 ## Completeness
 
@@ -163,7 +201,7 @@ Rules:
 - Hitting the iteration bound before observing a normal end is unavailable, not partial.
 - The addon MUST NOT emit the previous session's snapshot when the current capture is unavailable.
 
-The absence of a block means only that no usable companion snapshot was supplied. The browser keeps its current `/simc`-only behavior and does not infer an empty aura set was observed.
+The absence of a block means only that no usable companion snapshot was supplied. The browser keeps its legacy `/simc`-only behavior, zero-fills unavailable ratings with a warning, and does not infer an empty aura set was observed.
 
 ## SimulationCraft checksum
 
@@ -185,7 +223,7 @@ The addon MUST NOT append a block if it cannot recognize or reproduce the curren
 
 ## Binding to a local combat-log attempt
 
-Before materializing auras, Localog MUST validate the snapshot against the selected target-dummy input:
+Before materializing stats and auras, Localog MUST validate the snapshot against the selected target-dummy input:
 
 - `player_guid` exactly equals the selected player GUID.
 - `client_version`, `client_build`, and `client_toc` agree with the SimulationCraft provenance and the selected log metadata wherever each value is available.
@@ -197,7 +235,7 @@ A player, build, TOC, or advanced-log mismatch is a hard, recoverable preparatio
 
 ## Import result
 
-For a valid record that has a safely resolvable source, the synthesized `CombatantInfoEvent.auras` entry receives:
+The synthesized `CombatantInfoEvent` receives the complete `stats` bundle without approximation. For a valid aura record that has a safely resolvable source, its `auras` entry receives:
 
 - aura ability/spell ID from `spell_id`;
 - stack count from `applications`;
@@ -206,7 +244,7 @@ For a valid record that has a safely resolvable source, the synthesized `Combata
 
 Names and icons are presentation metadata resolved by the browser's existing spell data. They are not trusted from the addon.
 
-Durations, expiration, instance identity, and whether the aura was applied shortly before the pull are deliberately unknown. Protocol version 1 asserts only that the readable helpful aura was present at the `combat_activating` boundary.
+Durations, expiration, instance identity, and whether the aura was applied shortly before the pull are deliberately unknown. Protocol version 2 asserts only that the stat bundle and readable helpful auras were present at the `combat_activating` boundary.
 
 ## Error handling
 

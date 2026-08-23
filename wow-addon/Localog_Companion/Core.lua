@@ -243,6 +243,29 @@ function Localog:CheckProbeSupport()
   if not C_UnitAuras or not C_UnitAuras.GetAuraDataByIndex then
     return false, "missing_indexed_aura_api"
   end
+  if type(UnitStat) ~= "function"
+    or type(UnitArmor) ~= "function"
+    or type(GetCombatRating) ~= "function"
+  then
+    return false, "missing_combatant_stats_api"
+  end
+  if type(CR_DODGE) ~= "number"
+    or type(CR_PARRY) ~= "number"
+    or type(CR_BLOCK) ~= "number"
+    or type(CR_CRIT_MELEE) ~= "number"
+    or type(CR_CRIT_RANGED) ~= "number"
+    or type(CR_CRIT_SPELL) ~= "number"
+    or type(CR_SPEED) ~= "number"
+    or type(CR_LIFESTEAL) ~= "number"
+    or type(CR_HASTE_MELEE) ~= "number"
+    or type(CR_HASTE_RANGED) ~= "number"
+    or type(CR_HASTE_SPELL) ~= "number"
+    or type(CR_AVOIDANCE) ~= "number"
+    or type(CR_MASTERY) ~= "number"
+    or type(CR_VERSATILITY_DAMAGE_DONE) ~= "number"
+  then
+    return false, "missing_combat_rating_constant"
+  end
   if not C_Secrets or not C_Secrets.ShouldAurasBeSecret then
     return false, "missing_aura_secrecy_api"
   end

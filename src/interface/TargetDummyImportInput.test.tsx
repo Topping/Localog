@@ -15,8 +15,8 @@ const adler32 = (value: string) => {
 
 const COMPANION_PROFILE_BODY = `warrior="Grace"
 ### Localog Companion Snapshot
-# localog.schema=1
-# localog.addon_version=0.4.0
+# localog.schema=2
+# localog.addon_version=0.6.0
 # localog.player_guid=Player-2
 # localog.client_version=12.1.0
 # localog.client_build=69404
@@ -26,6 +26,7 @@ const COMPANION_PROFILE_BODY = `warrior="Grace"
 # localog.completeness=complete
 # localog.skipped_secret=0
 # localog.skipped_invalid=0
+# localog.stats=1944,513,30352,334,0,0,0,1186,1186,1186,98,52,276,276,276,0,1175,34,34,34,1956
 # localog.aura=465,2,Player-2
 ### End Localog Companion Snapshot
 `;
@@ -160,7 +161,7 @@ describe('TargetDummyImportInput', () => {
     fireEvent.change(screen.getByLabelText('Localog Companion export'), {
       target: { value: COMPANION_PROFILE },
     });
-    expect(screen.getByText('Pull snapshot: 1 aura captured')).toBeInTheDocument();
+    expect(screen.getByText('Pull snapshot: stats and 1 aura captured')).toBeInTheDocument();
     expect(screen.getByText(/Complete capture/)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Import selected attempt' }));
 

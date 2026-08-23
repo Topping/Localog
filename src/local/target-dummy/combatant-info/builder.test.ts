@@ -38,6 +38,29 @@ const AUTHENTIC_COMBATANT_INFO_FIXTURE = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../test-fixtures/derived/encounter-envelope.log',
 );
+const PULL_TIME_STATS = {
+  strength: 1944,
+  agility: 513,
+  stamina: 30352,
+  intellect: 334,
+  dodge: 0,
+  parry: 0,
+  block: 0,
+  critMelee: 1186,
+  critRanged: 1186,
+  critSpell: 1186,
+  speed: 98,
+  leech: 52,
+  hasteMelee: 276,
+  hasteRanged: 276,
+  hasteSpell: 276,
+  avoidance: 0,
+  mastery: 1175,
+  versatilityDamageDone: 34,
+  versatilityHealingDone: 34,
+  versatilityDamageReduction: 34,
+  armor: 1956,
+} as const;
 
 function parsedProfile(): ParsedSimcAddonProfile {
   const result = parseSimcAddonProfile(PROFILE_TEXT);
@@ -114,8 +137,8 @@ describe('target-dummy combatant-info builder', () => {
 
   it('materializes exact known aura sources and reports partial or unresolved records', () => {
     const snapshot = {
-      schema: 1,
-      addonVersion: '0.4.0',
+      schema: 2,
+      addonVersion: '0.6.0',
       playerGuid: 'Player-1',
       clientVersion: '12.1.0',
       clientBuild: 69404,
@@ -125,6 +148,7 @@ describe('target-dummy combatant-info builder', () => {
       completeness: 'partial',
       skippedSecret: 1,
       skippedInvalid: 0,
+      stats: PULL_TIME_STATS,
       auras: [
         { spellId: 465, applications: 3, sourceGuid: 'Player-1' },
         { spellId: 6673, applications: 1, sourceGuid: null },
@@ -143,7 +167,11 @@ describe('target-dummy combatant-info builder', () => {
       },
     ];
     const pullTimeAuras = materializeCompanionAuras(snapshot, actors);
-    const result = buildCombatantInfoEvent({ ...validOptions(), pullTimeAuras });
+    const result = buildCombatantInfoEvent({
+      ...validOptions(),
+      pullTimeAuras,
+      pullTimeStats: snapshot.stats,
+    });
 
     expect(pullTimeAuras.summary).toEqual({
       completeness: 'partial',
@@ -157,9 +185,14 @@ describe('target-dummy combatant-info builder', () => {
     expect(result).toMatchObject({
       ok: true,
       value: {
-        event: { auras: [{ source: 17, ability: 465, stacks: 3 }] },
+        event: {
+          strength: 1944,
+          critMelee: 1186,
+          mastery: 1175,
+          armor: 1956,
+          auras: [{ source: 17, ability: 465, stacks: 3 }],
+        },
         diagnostics: [
-          { message: expect.stringContaining('ratings') },
           { message: expect.stringContaining('partial') },
           { message: expect.stringContaining('no caster was substituted') },
           { message: expect.stringContaining('Item quality') },

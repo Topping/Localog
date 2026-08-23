@@ -159,7 +159,7 @@ export default function TargetDummyImportInput({
             role="status"
           >
             <strong>
-              Pull snapshot: {companionSnapshot.auras.length}{' '}
+              Pull snapshot: stats and {companionSnapshot.auras.length}{' '}
               {companionSnapshot.auras.length === 1 ? 'aura' : 'auras'} captured
             </strong>
             <span>

@@ -1,6 +1,7 @@
 import {
   COMPANION_SCHEMA_VERSION,
   type CompanionAuraSnapshotRecord,
+  type CompanionCombatantStats,
   type CompanionResult,
   type CompanionSnapshot,
   type CompanionSnapshotFailureCode,
@@ -35,6 +36,7 @@ const SCALAR_KEYS = [
   'completeness',
   'skipped_secret',
   'skipped_invalid',
+  'stats',
 ] as const;
 const KNOWN_KEYS = new Set<string>([...SCALAR_KEYS, 'aura']);
 
@@ -105,6 +107,60 @@ function parseAura(value: string): CompanionAuraSnapshotRecord | undefined {
     return undefined;
   }
   return { spellId, applications, sourceGuid };
+}
+
+function parseStats(value: string): CompanionCombatantStats | undefined {
+  const fields = value.split(',');
+  if (fields.length !== 21) return undefined;
+  const values = fields.map((field) => parseInteger(field, 0, MAX_SIGNED_INTEGER));
+  if (values.some((field) => field === undefined)) return undefined;
+
+  const [
+    strength,
+    agility,
+    stamina,
+    intellect,
+    dodge,
+    parry,
+    block,
+    critMelee,
+    critRanged,
+    critSpell,
+    speed,
+    leech,
+    hasteMelee,
+    hasteRanged,
+    hasteSpell,
+    avoidance,
+    mastery,
+    versatilityDamageDone,
+    versatilityHealingDone,
+    versatilityDamageReduction,
+    armor,
+  ] = values as number[];
+  return {
+    strength,
+    agility,
+    stamina,
+    intellect,
+    dodge,
+    parry,
+    block,
+    critMelee,
+    critRanged,
+    critSpell,
+    speed,
+    leech,
+    hasteMelee,
+    hasteRanged,
+    hasteSpell,
+    avoidance,
+    mastery,
+    versatilityDamageDone,
+    versatilityHealingDone,
+    versatilityDamageReduction,
+    armor,
+  };
 }
 
 function isAscii(value: string): boolean {
@@ -226,6 +282,7 @@ export function parseCompanionSnapshot(text: string): CompanionSnapshotParseResu
   const completeness = values.get('completeness');
   const skippedSecret = parseInteger(values.get('skipped_secret') ?? '', 0, MAX_BYTE_INTEGER);
   const skippedInvalid = parseInteger(values.get('skipped_invalid') ?? '', 0, MAX_BYTE_INTEGER);
+  const stats = parseStats(values.get('stats') ?? '');
   if (
     !validVersion(addonVersion, ADDON_VERSION) ||
     playerGuid.length < 8 ||
@@ -239,6 +296,7 @@ export function parseCompanionSnapshot(text: string): CompanionSnapshotParseResu
     (completeness !== 'complete' && completeness !== 'partial') ||
     skippedSecret === undefined ||
     skippedInvalid === undefined ||
+    stats === undefined ||
     (completeness === 'complete' && (skippedSecret !== 0 || skippedInvalid !== 0)) ||
     (completeness === 'partial' && skippedSecret === 0 && skippedInvalid === 0)
   ) {
@@ -312,6 +370,7 @@ export function parseCompanionSnapshot(text: string): CompanionSnapshotParseResu
       completeness,
       skippedSecret,
       skippedInvalid,
+      stats,
       auras,
     } satisfies CompanionSnapshot,
   };
