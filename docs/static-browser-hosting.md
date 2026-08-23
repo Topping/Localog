@@ -50,9 +50,17 @@ Enable GitHub Pages with **GitHub Actions** as its source. The workflow runs for
 - Local imports currently target current Retail advanced combat logs. Incompatible parser/schema versions are recoverable by deleting and re-importing the report.
 - A standalone target-dummy capture uses the same file picker. The optional, separately installable
   `wow-addon/Localog_Companion` addon guides advanced logging, records pull-time character stats and
-  one readable aura snapshot, and produces a single Localog Companion export. After discovery, choose the matching
-  player and attempt and paste that value. Files containing a usable genuine encounter follow the
-  encounter path and do not offer nearby unmarked dummy activity.
+  one readable aura snapshot, and produces a single Localog Companion export. After discovery,
+  choose the matching player and attempt and paste that value. WoW may append multiple logging
+  sessions to one physical file; stopping and restarting combat logging writes the boundary Localog
+  uses to inspect the newest session first. A newest standalone target-dummy session can therefore
+  be imported without parsing an older raid prefix. If the newest session is not a target-dummy
+  capture, Localog falls back to whole-file encounter discovery so encounters from older sessions
+  are not lost.
+- Genuine encounters still take precedence within one uninterrupted logging session. To isolate a
+  target-dummy capture after raiding, stop logging before beginning the capture (or rotate the file)
+  and then start it again. Localog Companion does not stop logging that was already active when it
+  began, so pre-existing logging must be restarted manually when this boundary is needed.
 - Target-dummy preparation currently supports only Retail project 1, combat-log version 22, WoW
   12.1.0, and its checked-in talent snapshot. Character identity, spec, decoded talents, equipped
   items, exact pull-time ratings/effective attributes, and safely sourced pull-time auras come from
@@ -62,7 +70,9 @@ Enable GitHub Pages with **GitHub Actions** as its source. The workflow runs for
   attempt is authoritative.
 - Target-dummy discovery and normalization stay in the browser worker. Only the selected attempt's
   analyzed window is normalized into IndexedDB, with a five-second pre-roll clamped to the source
-  segment boundary; the source file is not uploaded.
+  segment boundary. For a newest-session target-dummy import, both semantic discovery and
+  normalization read that session's byte range instead of an older physical-file prefix; the source
+  file is not uploaded.
 - When enabled, WCL report metadata, combatant information, paginated events, filtered events, tables, and graphs use WCL v2. Access-token state is session-scoped; expiry asks the user to sign in again and does not affect local reports.
 - Character, guild, premium/account, aggregate support-statistics, and remote character-profile pages are not part of the first static milestone.
 - Features backed by a WCL-only aggregate are modeled as optional capabilities. A local report gets an explicit unavailable result instead of a WCL request or a fabricated zero.

@@ -1,7 +1,9 @@
 import {
   decodeCombatLogLine,
+  findNewestCombatLogSessionRange,
   LocalCombatLogDiscovery,
   readCombatLogLines,
+  type CombatLogSourceRange,
 } from '../LocalCombatLogParser';
 import type { TargetDummyDiscoveryRoute } from './contracts';
 import { TargetDummyActorDiscovery } from './discovery';
@@ -33,7 +35,9 @@ export class TargetDummyDiscoveryRouter {
     this.#encounterDiscovery.line(fields, line);
   }
 
-  finish(): TargetDummyDiscoveryRoute {
+  finish(
+    sourceRange: CombatLogSourceRange = { startByte: 0, endByte: Number.MAX_SAFE_INTEGER },
+  ): TargetDummyDiscoveryRoute {
     this.#encounterDiscovery.validateVersion();
     const targetDummyDiscovery = this.#targetDummyDiscovery.finish();
 
@@ -47,6 +51,7 @@ export class TargetDummyDiscoveryRouter {
         discovery: targetDummyDiscovery,
         diagnostics: this.#encounterDiscovery.diagnostics,
         localActors: [...this.#encounterDiscovery.actors.values()],
+        sourceRange,
         build: {
           gameVersion: 1,
           logVersion: 22,
@@ -59,7 +64,7 @@ export class TargetDummyDiscoveryRouter {
       error: {
         code: 'no-usable-encounter-or-target-dummy-session',
         message:
-          'No complete encounter with combatant information or qualifying target-dummy attempt was found. Use an unmodified Retail advanced combat log and keep target-dummy activity in a standalone file.',
+          'No complete encounter with combatant information or qualifying target-dummy attempt was found. Use an unmodified Retail advanced combat log and keep target-dummy activity in a standalone file or newly restarted logging session.',
         diagnostics: this.#encounterDiscovery.diagnostics,
       },
     };
@@ -90,17 +95,52 @@ export class TargetDummyDiscoveryRouter {
   }
 }
 
+async function scanCombatLogRange(
+  file: File,
+  range: CombatLogSourceRange,
+  signal?: AbortSignal,
+  progress?: (value: number) => void,
+): Promise<TargetDummyDiscoveryRoute> {
+  const isFullFile = range.startByte === 0 && range.endByte === file.size;
+  const source = isFullFile ? file : file.slice(range.startByte, range.endByte);
+  const router = new TargetDummyDiscoveryRouter();
+  for await (const record of readCombatLogLines(source, signal)) {
+    router.consume(decodeCombatLogLine(record.line), record.lineNumber);
+    progress?.(source.size ? Math.min(1, record.bytesRead / source.size) : 1);
+  }
+  const result = router.finish(range);
+  progress?.(1);
+  return result;
+}
+
 export async function routeLocalCombatLogDiscovery(
   file: File,
   signal?: AbortSignal,
   progress?: (value: number) => void,
 ): Promise<TargetDummyDiscoveryRoute> {
-  const router = new TargetDummyDiscoveryRouter();
-  for await (const record of readCombatLogLines(file, signal)) {
-    router.consume(decodeCombatLogLine(record.line), record.lineNumber);
-    progress?.(file.size ? Math.min(1, record.bytesRead / file.size) : 1);
+  let lastProgress = 0;
+  const reportProgress = (value: number) => {
+    lastProgress = Math.max(lastProgress, Math.min(1, value));
+    progress?.(lastProgress);
+  };
+  const fullRange = { startByte: 0, endByte: file.size };
+  const latestRange = await findNewestCombatLogSessionRange(file, signal, (value) =>
+    reportProgress(value * 0.05),
+  );
+
+  if (latestRange.startByte === 0) {
+    return scanCombatLogRange(file, fullRange, signal, (value) =>
+      reportProgress(0.05 + value * 0.95),
+    );
   }
-  const result = router.finish();
-  progress?.(1);
-  return result;
+
+  const latestResult = await scanCombatLogRange(file, latestRange, signal, (value) =>
+    reportProgress(0.05 + value * 0.45),
+  );
+  if (latestResult.type === 'target-dummy-input-required') {
+    reportProgress(1);
+    return latestResult;
+  }
+
+  return scanCombatLogRange(file, fullRange, signal, (value) => reportProgress(0.5 + value * 0.5));
 }

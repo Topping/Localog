@@ -184,10 +184,12 @@ async function main() {
     route.discovery,
     route.localActors,
     prepared,
+    route.sourceRange,
   );
+  const semanticSourceBytes = route.sourceRange.endByte - route.sourceRange.startByte;
   globalThis.gc?.();
   const normalizationBaseline = memorySample();
-  const normalizationMemory = createMemorySampler(file.size, normalizationBaseline);
+  const normalizationMemory = createMemorySampler(semanticSourceBytes, normalizationBaseline);
   const normalizationStartedAt = performance.now();
   let approximateStoredBytes = 0;
   let eventCount = 0;
@@ -210,10 +212,13 @@ async function main() {
     capture: {
       path: options.logPath,
       bytes: file.size,
+      physicalBytes: file.size,
       mebibytes: round(file.size / MEBIBYTE),
     },
     discovery: {
       milliseconds: round(discoveryMs),
+      semanticSourceBytes,
+      semanticSourceMiB: round(semanticSourceBytes / MEBIBYTE),
       recordsScanned: route.discovery.recordsScanned,
       players: route.discovery.players.length,
       sessions: route.discovery.sessions.length,
@@ -233,6 +238,8 @@ async function main() {
     },
     normalization: {
       milliseconds: round(normalizationMs),
+      semanticSourceBytes,
+      semanticSourceMiB: round(semanticSourceBytes / MEBIBYTE),
       eventCount,
       batchCount,
       approximateStoredBytes,

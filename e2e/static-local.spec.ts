@@ -108,7 +108,7 @@ test('automatically routes, analyzes, reopens, and deletes a target-dummy log', 
   await expect(preparation).toBeVisible();
   await expect(page.getByText('Téstknight-ExampleRealm', { exact: true }).first()).toBeVisible();
   await preparation.getByRole('radio').check();
-  await preparation.getByLabel('SimulationCraft addon export').fill(TARGET_DUMMY_SIMC_PROFILE);
+  await preparation.getByLabel('Localog Companion export').fill(TARGET_DUMMY_SIMC_PROFILE);
   await preparation.getByRole('button', { name: 'Import selected attempt' }).click();
 
   await continueAnywayIfNeeded(page);

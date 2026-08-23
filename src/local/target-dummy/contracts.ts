@@ -1,4 +1,9 @@
-import type { LocalActor, LocalCombatLogDiscovery, LocalDiagnostic } from '../LocalCombatLogParser';
+import type {
+  CombatLogSourceRange,
+  LocalActor,
+  LocalCombatLogDiscovery,
+  LocalDiagnostic,
+} from '../LocalCombatLogParser';
 import type { TargetDummyBuildBinding } from './combatant-info/validator';
 
 export type TargetDummyActorKind =
@@ -126,6 +131,8 @@ export type TargetDummyDiscoveryRoute =
       readonly diagnostics: readonly LocalDiagnostic[];
       /** Worker-only state retained across the preparation pause. */
       readonly localActors: readonly LocalActor[];
+      /** Worker-only byte range containing the selected logging session. */
+      readonly sourceRange: CombatLogSourceRange;
       readonly build: TargetDummyBuildBinding;
     }
   | {

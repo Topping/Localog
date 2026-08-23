@@ -127,10 +127,20 @@ If no such envelope exists, evaluate the target-dummy session candidates collect
 streaming discovery pass. If candidates exist, enter synthetic preparation. If neither a usable
 encounter nor a qualifying dummy session exists, return an actionable unsupported-input error.
 
-Non-encounter activity must be alone in its source file. If a file contains any usable genuine
-encounter, only genuine encounters count and the file follows the current encounter flow. Do not
-offer unmarked dummy activity from that file. The UI should explain this requirement when synthetic
-discovery finds no eligible standalone session.
+Encounter precedence applies to the source range being classified. WoW may append several logging
+sessions to one physical file, each beginning with `COMBAT_LOG_VERSION`. When more than one valid
+session exists, inspect the newest session first. If it contains a qualifying target-dummy attempt
+and no usable encounter, select that byte range without semantically scanning older sessions. If the
+newest session contains a usable encounter or no qualifying target-dummy attempt, fall back to the
+whole file so encounter imports retain encounters from every session.
+
+Non-encounter activity must still be alone within its logging session. If one uninterrupted session
+contains any usable genuine encounter, only genuine encounters count; do not offer nearby unmarked
+dummy activity from that range. Stopping and restarting combat logging creates the boundary needed
+to isolate a later dummy capture even when WoW reuses the physical file. Localog Companion must keep
+its existing ownership rule: it does not stop logging that was already active when its capture
+began, so that pre-existing logger must be restarted manually (or the file rotated) when isolation
+is required.
 
 ## Isolation boundary
 
@@ -565,8 +575,9 @@ entry in this document.
 ## Settled product decisions
 
 - Try `boss: -1` first and leave core fight eligibility unchanged.
-- Require target-dummy/non-encounter activity to be in a file without usable genuine encounters. If
-  genuine encounters exist, only they count.
+- Require target-dummy/non-encounter activity to be in a source range without usable genuine
+  encounters. A newest standalone logging session may be selected before older ranges are
+  inspected; within one uninterrupted session, genuine encounters still take precedence.
 - Do not infer unavailable combatant-info values. Leave them at documented defaults and investigate
   better sources separately in the future.
 - Preserve authentic empty equipment slots, but block import when an equipped item has no item level.

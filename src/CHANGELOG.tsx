@@ -45,6 +45,7 @@ import SpellLink from 'interface/SpellLink';
 
 // prettier-ignore
 export default [
+  change(date(2026, 8, 23), 'Speed up target-dummy imports by skipping older logging sessions in appended combat log files.', Topping),
   change(date(2026, 8, 23), 'Point Localog source links at its renamed repository and unblock automatic Pages deployments.', Topping),
   change(date(2026, 8, 23), 'Capture exact pull-time character stats with Localog Companion.', Topping),
   change(date(2026, 8, 23), 'Simplify Localog Companion capture guidance and target-dummy import feedback.', Topping),
