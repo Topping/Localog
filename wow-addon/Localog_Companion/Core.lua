@@ -265,10 +265,6 @@ function Localog:CheckSessionSupport()
   then
     return false, "missing_cvar_api"
   end
-  if not self.SimcIntegration:GetProbeStatus() then
-    return false, "missing_simc_public_api"
-  end
-
   return true
 end
 
@@ -356,6 +352,7 @@ end
 function Localog:StartPracticeCapture(preserveUnknownOwnership)
   self.probe = newProbe()
   self.session = newSession()
+  self.SimcIntegration:ResetAttemptStatus()
   self.session.loggingOwnershipUnknown = preserveUnknownOwnership == true
   self.session.state = "starting"
   self.session.startedAt = GetServerTime()
@@ -535,6 +532,8 @@ end
 function Localog:ResetSession()
   self.probe = newProbe()
   self.session = newSession()
+  self.SimcIntegration:ResetAttemptStatus()
+  self.session.simcPublicAPI = self.SimcIntegration:GetProbeStatus()
   self:RefreshUI()
 end
 
@@ -575,6 +574,10 @@ function Localog:OnAddonLoaded(loadedAddonName)
   end
 
   frame:UnregisterEvent("ADDON_LOADED")
+  if self.SimcIntegration and self.SimcIntegration.Initialize then
+    self.SimcIntegration:Initialize()
+    self.session.simcPublicAPI = self.SimcIntegration:GetProbeStatus()
+  end
   if self.UI and self.UI.Initialize then
     self.UI:Initialize()
   end
@@ -616,6 +619,8 @@ function Localog:RegisterSlashCommands()
       end
     elseif command == "snapshot" then
       self:ShowSnapshot()
+    elseif command == "export" then
+      self:ShowCombinedExport()
     elseif command == "copy" or command == "evidence" then
       self:ShowEvidence()
     else
@@ -651,6 +656,40 @@ function Localog:ShowSnapshot()
   end
   if self.UI and self.UI.ShowSnapshot then
     self.UI:ShowSnapshot(snapshot.protocolBlock)
+    return true
+  end
+
+  return false
+end
+
+function Localog:ShowCombinedExport()
+  if self.session.state ~= "ready" then
+    self.session.issue = "export_not_ready"
+    self:RefreshUI()
+    self:ShowUI()
+    return false
+  end
+
+  local snapshot = self.probe.snapshot
+  if not snapshot or type(snapshot.protocolBlock) ~= "string" then
+    self:SetLimited("snapshot_block_unavailable", "reset")
+    self:ShowUI()
+    return false
+  end
+
+  local combined, reason = self.SimcIntegration:GenerateCombinedExport(snapshot.protocolBlock)
+  self.session.simcPublicAPI = self.SimcIntegration:GetProbeStatus()
+  if not combined then
+    self.session.issue = "export_" .. (reason or "unknown")
+    self:RefreshUI()
+    self:ShowUI()
+    return false
+  end
+
+  self.session.issue = nil
+  self:RefreshUI()
+  if self.UI and self.UI.ShowExport then
+    self.UI:ShowExport(combined)
     return true
   end
 

@@ -1,8 +1,8 @@
 # Localog Companion
 
-`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and serializes a bounded protocol v1 snapshot. A later implementation slice will append that snapshot to a SimulationCraft profile for one-copy import.
+`Localog_Companion` is a standalone World of Warcraft addon under development for Localog's target-dummy importer. It guides combat logging, captures readable helpful player auras at the combat restriction boundary, and appends its bounded protocol v1 snapshot to a fresh SimulationCraft profile for one-copy import.
 
-The current `0.3.0` build implements CA-02: a memory-only recording session, ownership-safe combat log control, synchronous pull-boundary aura reduction, deterministic normalization, and the exact comment-only snapshot block defined by [the canonical protocol](./PROTOCOL.md). It does not yet generate the combined `/simc` export. No session or character data survives `/reload`.
+The current `0.4.0` test build implements CA-03. Both **Copy for Localog** and the optional `/simc` convenience hook use the same strict combined-export builder. It validates SimulationCraft's original checksum, inserts the exact comment-only [protocol v1](./PROTOCOL.md) block immediately before the checksum, and recalculates Adler-32 over the clipboard form. No session or character data survives `/reload`.
 
 ## Install
 
@@ -11,7 +11,7 @@ The current `0.3.0` build implements CA-02: a memory-only recording session, own
 3. Start or reload Retail World of Warcraft 12.1.
 4. Confirm that both SimulationCraft and Localog Companion are enabled.
 
-The addon declares SimulationCraft as a required dependency so its public API has deterministic load order.
+The addon declares SimulationCraft as a required dependency so its public API has deterministic load order. The minimum tested SimulationCraft addon release is `12.0.5-04`; runtime feature checks still decide whether the public export API and the separate `/simc` convenience seam are usable.
 
 ## Run a practice capture
 
@@ -20,7 +20,9 @@ The addon declares SimulationCraft as a required dependency so its public API ha
 3. Confirm that the panel reaches **ARMED** and shows advanced logging, combat logging, and the SimulationCraft API as available.
 4. Begin a normal target-dummy pull. The panel should change to **CAPTURED** at the pull boundary.
 5. Leave combat normally. If Localog started logging, the panel will stop it after restrictions clear and then show **READY**. If logging was already active, Localog leaves it active and says so.
-6. In **READY**, click **Copy snapshot block** to inspect the complete protocol v1 block. Use **Copy evidence** for a sanitized CA-02 result that omits character and aura identifiers.
+6. In **READY**, click **Copy for Localog**. The companion opens one selected edit box containing the complete SimC profile, one companion block, and one recalculated terminal checksum.
+7. As a convenience, running `/simc` while the same snapshot is **READY** should place the same kind of combined export in SimulationCraft's own selected edit box. If that private UI seam is incompatible, `/simc` remains unchanged and the companion directs you back to **Copy for Localog**.
+8. Use **Copy evidence** for a sanitized CA-03 result that omits the profile, character identifiers, and aura identifiers.
 
 The panel treats an unknown `LoggingCombat` result as rate limiting, shows a ten-second recovery countdown, and requires an explicit retry. It never assumes ownership after an unknown result. If an owned stop cannot be confirmed, **Stop combat logging** remains available; **Dismiss** intentionally abandons the in-memory session so logging must then be checked manually.
 
@@ -30,8 +32,15 @@ Slash commands:
 - `/localog start` starts the same hardware-initiated preflight as the panel button (`arm` remains an alias).
 - `/localog retry` retries a rate-limited preflight or logging stop.
 - `/localog cancel` cancels the session and stops only logging that this session owns (`reset` remains an alias).
+- `/localog export` generates a fresh SimC profile, adds the ready snapshot, verifies and recalculates its checksum, and opens the selected combined export.
 - `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
 - `/localog copy` opens and selects sanitized evidence (`evidence` is an alias).
+
+## CA-03 test status
+
+**CA-03 decision: awaiting in-game verification.** The stable public-API export and isolated `/simc` post-hook are implemented in `0.4.0`. The addon fails closed if profile generation reports an error, the input checksum does not validate, the terminal checksum is missing or duplicated, a companion block is already present, or the named `/simc` edit box no longer matches the profile passed to its frame method.
+
+The stable path and convenience path degrade independently. A missing public API blocks **Copy for Localog** and asks for a SimulationCraft update without blocking aura capture. A missing private UI seam leaves `/simc` untouched while the stable public-API path remains available. The adapter does not replace `/simc`, overwrite `GetSimcProfile`, or modify SimulationCraft saved variables.
 
 ## CA-02 evidence status
 
@@ -45,7 +54,7 @@ Slash commands:
 | Complete snapshot invariants    | Verified | `completeness=complete`, both skipped counters `0`, normal terminator at index `6`, and no inaccessible aura values. |
 | Serializer bounds               | Verified | `protocol_serialized=true`; the complete block was `632` bytes against the 64 KiB limit.                             |
 
-The verified pull did not naturally contain duplicate records, unavailable source GUIDs, secret entries, or invalid entries. Their deduplication, unknown-source, partial, and unavailable paths remain fail-closed implementation branches to confirm when suitable Retail cases occur. The raw snapshot contains player/source GUIDs, spell IDs, build metadata, and capture time; redact those identifiers before sharing it publicly. Combined SimulationCraft export and checksum handling arrive in CA-03.
+The verified pull did not naturally contain duplicate records, unavailable source GUIDs, secret entries, or invalid entries. Their deduplication, unknown-source, partial, and unavailable paths remain fail-closed implementation branches to confirm when suitable Retail cases occur. The raw snapshot and combined export contain the SimC character profile, player/source GUIDs, spell IDs, build metadata, and capture time; do not share either publicly. The **Copy evidence** output is the sanitized test artifact.
 
 ## CA-01 evidence status
 
@@ -85,6 +94,7 @@ The start button refuses preflight if any supported addon restriction is active 
 
 API references:
 
+- [SimulationCraft addon's current profile, checksum, public API, and frame implementation](https://github.com/simulationcraft/simc-addon/blob/master/core.lua)
 - [LoggingCombat](https://warcraft.wiki.gg/wiki/API:LoggingCombat)
 - [ADDON_RESTRICTION_STATE_CHANGED](https://warcraft.wiki.gg/wiki/ADDON_RESTRICTION_STATE_CHANGED)
 - [Blizzard restricted-action API definitions](https://github.com/Gethe/wow-ui-source/blob/live/Interface/AddOns/Blizzard_APIDocumentationGenerated/RestrictedActionsDocumentation.lua)

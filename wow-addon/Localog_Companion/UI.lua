@@ -90,10 +90,12 @@ end
 function Localog:BuildEvidenceText()
   local probe = self.probe
   local session = self.session
+  local integration = self.SimcIntegration
+  integration:RefreshAvailability()
   local context = probe.context or self:GetClientContext()
   local enums = self:GetRestrictionEnums()
   local lines = {
-    "Localog Companion CA-02 evidence",
+    "Localog Companion CA-03 evidence",
     "addon_version=" .. valueOrUnknown(context.addonVersion),
     "client_version=" .. valueOrUnknown(context.clientVersion),
     "client_build=" .. valueOrUnknown(context.clientBuild),
@@ -109,10 +111,47 @@ function Localog:BuildEvidenceText()
     "logging_was_preexisting=" .. valueOrUnknown(session.loggingWasPreexisting),
     "logging_ownership_unknown=" .. valueOrUnknown(session.loggingOwnershipUnknown),
     "logging_retry_seconds=" .. valueOrUnknown(self:GetLoggingRetrySeconds()),
-    "simc_public_api=" .. valueOrUnknown(session.simcPublicAPI),
+    "simc_addon_version=" .. valueOrUnknown(integration.simcVersion),
+    "simc_minimum_tested_version=" .. valueOrUnknown(integration.minimumTestedVersion),
+    "simc_public_api=" .. valueOrUnknown(integration.publicApiAvailable),
+    "simc_convenience_hooked=" .. valueOrUnknown(integration.convenienceHooked),
+    "simc_convenience_status=" .. valueOrUnknown(integration.convenienceStatus),
+    "simc_convenience_issue=" .. valueOrUnknown(integration.convenienceIssue or "none"),
+    "simc_stable_export_status=" .. valueOrUnknown(integration.stableStatus),
+    "simc_stable_export_issue=" .. valueOrUnknown(integration.stableIssue or "none"),
     "armed_at=" .. valueOrUnknown(probe.armedAt),
     "armed_restrictions=" .. restrictionSummary(probe.armedRestrictions),
   }
+
+  local stableMetrics = integration.stableMetrics
+  lines[#lines + 1] = "simc_stable_input_checksum_verified="
+    .. valueOrUnknown(stableMetrics and stableMetrics.inputChecksumVerified)
+  lines[#lines + 1] = "simc_stable_original_bytes="
+    .. valueOrUnknown(stableMetrics and stableMetrics.originalBytes)
+  lines[#lines + 1] = "simc_stable_snapshot_bytes="
+    .. valueOrUnknown(stableMetrics and stableMetrics.snapshotBytes)
+  lines[#lines + 1] = "simc_stable_combined_bytes="
+    .. valueOrUnknown(stableMetrics and stableMetrics.combinedBytes)
+  lines[#lines + 1] = "simc_stable_terminal_checksum_lines="
+    .. valueOrUnknown(stableMetrics and stableMetrics.terminalChecksumLines)
+  lines[#lines + 1] = "simc_stable_companion_blocks="
+    .. valueOrUnknown(stableMetrics and stableMetrics.companionBlocks)
+  lines[#lines + 1] = "simc_stable_snapshot_before_checksum="
+    .. valueOrUnknown(stableMetrics and stableMetrics.snapshotImmediatelyBeforeChecksum)
+  lines[#lines + 1] = "simc_stable_added_lines_comments="
+    .. valueOrUnknown(stableMetrics and stableMetrics.addedLinesAreComments)
+  lines[#lines + 1] = "simc_stable_output_checksum="
+    .. valueOrUnknown(stableMetrics and stableMetrics.outputChecksum)
+
+  local convenienceMetrics = integration.convenienceMetrics
+  lines[#lines + 1] = "simc_convenience_input_checksum_verified="
+    .. valueOrUnknown(convenienceMetrics and convenienceMetrics.inputChecksumVerified)
+  lines[#lines + 1] = "simc_convenience_combined_bytes="
+    .. valueOrUnknown(convenienceMetrics and convenienceMetrics.combinedBytes)
+  lines[#lines + 1] = "simc_convenience_terminal_checksum_lines="
+    .. valueOrUnknown(convenienceMetrics and convenienceMetrics.terminalChecksumLines)
+  lines[#lines + 1] = "simc_convenience_companion_blocks="
+    .. valueOrUnknown(convenienceMetrics and convenienceMetrics.companionBlocks)
 
   if enums then
     lines[#lines + 1] = table.concat({
@@ -196,7 +235,7 @@ local function createEvidenceFrame()
 
   local title = frame:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
   title:SetPoint("TOPLEFT", 18, -16)
-  title:SetText("Localog CA-02 evidence")
+  title:SetText("Localog CA-03 evidence")
 
   local close = CreateFrame("Button", nil, frame, "UIPanelCloseButton")
   close:SetPoint("TOPRIGHT", -4, -4)
@@ -260,21 +299,43 @@ local function getStatusText(session, retrySeconds)
   end
   if session.state == "ready" then
     local result = Localog.probe.result
+    local integration = Localog.SimcIntegration
+    if result and result.status == "partial" then
+      if not integration.publicApiAvailable then
+        return "Partial snapshot ready, but combined export is unavailable. Update SimulationCraft."
+      end
+    end
+    if not integration.publicApiAvailable then
+      return "Snapshot ready, but combined export is unavailable. Update SimulationCraft; the raw snapshot remains available with /localog snapshot."
+    end
+    if integration.stableStatus == "failed" then
+      return "Combined export blocked ("
+        .. valueOrUnknown(integration.stableIssue)
+        .. "). Update SimulationCraft and retry."
+    end
+    if integration.convenienceStatus == "failed" then
+      return "/simc was left unchanged ("
+        .. valueOrUnknown(integration.convenienceIssue)
+        .. "). Copy for Localog remains available."
+    end
+    if not integration.convenienceHooked then
+      return "Combined export is ready through Copy for Localog. /simc compatibility is unavailable and /simc will remain unchanged."
+    end
     if result and result.status == "partial" then
       return string.format(
-        "Partial snapshot ready: %d readable auras; %d secret and %d invalid entries skipped.",
+        "Partial combined export ready: %d readable auras; %d secret and %d invalid entries skipped. Copy for Localog or /simc.",
         #result.auras,
         result.skippedSecret,
         result.skippedInvalid
       )
     end
     if session.loggingOwnershipUnknown then
-      return "Snapshot block ready. Combat logging ownership was unknown, so Localog left it on."
+      return "Combined export ready. Logging ownership was unknown, so Localog left it on. Copy for Localog or /simc."
     end
     if session.loggingWasPreexisting then
-      return "Snapshot block ready. Pre-existing combat logging remains on. Combined export arrives in CA-03."
+      return "Combined export ready. Pre-existing combat logging remains on. Copy for Localog or /simc."
     end
-    return "Snapshot block ready and owned combat logging is off. Combined export arrives in CA-03."
+    return "Combined export ready and owned combat logging is off. Copy for Localog or use /simc."
   end
 
   if retrySeconds > 0 then
@@ -339,7 +400,7 @@ function UI:Initialize()
   checks:SetPoint("TOPRIGHT", -18, -154)
   checks:SetJustifyH("LEFT")
   checks:SetJustifyV("TOP")
-  checks:SetHeight(80)
+  checks:SetHeight(96)
 
   local primary = CreateFrame("Button", nil, frame, "UIPanelButtonTemplate")
   primary:SetSize(190, 28)
@@ -351,7 +412,7 @@ function UI:Initialize()
     elseif session.state == "armed" or session.state == "captured" then
       Localog:CancelSession()
     elseif session.state == "ready" then
-      Localog:ShowSnapshot()
+      Localog:ShowCombinedExport()
     elseif session.state == "stopping" then
       Localog:RetryStop()
     elseif session.state == "limited" then
@@ -407,6 +468,9 @@ function UI:Refresh()
 
   local session = Localog.session
   local probe = Localog.probe
+  local integration = Localog.SimcIntegration
+  integration:RefreshAvailability()
+  session.simcPublicAPI = integration.publicApiAvailable
   local retrySeconds = Localog:GetLoggingRetrySeconds()
   self.frame.state:SetText("State: " .. string.upper(session.state))
   self.frame.status:SetText(getStatusText(session, retrySeconds))
@@ -415,7 +479,16 @@ function UI:Refresh()
     checkLabel(session.advancedLogging, "Advanced logging enabled", "Advanced logging disabled"),
     getLoggingCheck(session),
     getSnapshotCheck(probe.result),
-    checkLabel(session.simcPublicAPI, "SimulationCraft API available", "SimulationCraft API unavailable"),
+    checkLabel(
+      integration.publicApiAvailable,
+      "SimulationCraft public export API available",
+      "SimulationCraft public export API unavailable"
+    ),
+    checkLabel(
+      integration.convenienceHooked,
+      "/simc convenience hook installed",
+      "/simc left unchanged; use Copy for Localog"
+    ),
   }, "\n"))
 
   self.frame.dismiss:Hide()
@@ -440,8 +513,10 @@ function UI:Refresh()
       self.frame.dismiss:Show()
     end
   elseif session.state == "ready" then
-    self.frame.primary:SetText("Copy snapshot block")
-    setButtonEnabled(self.frame.primary, true)
+    self.frame.primary:SetText(
+      integration.publicApiAvailable and "Copy for Localog" or "Export unavailable"
+    )
+    setButtonEnabled(self.frame.primary, integration.publicApiAvailable)
   else
     self.frame.dismiss:Show()
     if session.retryAction == "reset" then
@@ -476,9 +551,13 @@ function UI:ShowText(text, title)
 end
 
 function UI:ShowEvidence(text)
-  self:ShowText(text, "Localog CA-02 evidence")
+  self:ShowText(text, "Localog CA-03 evidence")
 end
 
 function UI:ShowSnapshot(text)
   self:ShowText(text, "Localog protocol v1 snapshot")
+end
+
+function UI:ShowExport(text)
+  self:ShowText(text, "SimulationCraft profile with Localog snapshot")
 end
