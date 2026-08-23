@@ -1,6 +1,7 @@
 import cssComponent from 'interface/utils/css-component';
 import styles from './QualityIcon.module.scss';
 import { ComponentProps } from 'react';
+import { publicAsset } from 'config/staticHosting';
 
 const Img = cssComponent('img', styles.Img, [] as const);
 
@@ -15,7 +16,7 @@ interface QualityIconProps extends Exclude<ComponentProps<typeof Img>, 'src' | '
  */
 const QualityIcon = ({ quality, ...props }: QualityIconProps) => (
   <Img
-    src={`/quality/tier${quality}.png`}
+    src={publicAsset(`quality/tier${quality}.png`)}
     alt={`Quality: ${quality}`}
     title={`Quality: ${quality}`}
     {...props}

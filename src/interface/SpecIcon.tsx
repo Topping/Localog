@@ -1,6 +1,7 @@
 import { Spec } from 'game/SPECS';
 import type { HTMLAttributes } from 'react';
 import { useLingui } from '@lingui/react';
+import { publicAsset } from 'config/staticHosting';
 
 interface Props extends Omit<HTMLAttributes<HTMLImageElement>, 'id'> {
   spec?: Spec;
@@ -9,7 +10,7 @@ interface Props extends Omit<HTMLAttributes<HTMLImageElement>, 'id'> {
 }
 
 export function specIconPath(spec: Spec): string {
-  return `/specs/${spec.wclClassName}-${spec.wclSpecName}.jpg`;
+  return publicAsset(`specs/${spec.wclClassName}-${spec.wclSpecName}.jpg`);
 }
 
 const SpecIcon = ({ spec, icon, className, ...others }: Props) => {

@@ -2,6 +2,7 @@ import cssComponent from 'interface/utils/css-component';
 import styles from './HeaderBackground.module.scss';
 import Expansion from 'game/Expansion';
 import { type Raid } from 'game/raids';
+import { publicAsset } from 'config/staticHosting';
 
 interface Props {
   boss:
@@ -17,9 +18,9 @@ interface Props {
 const getFallbackImage = (expansion: Expansion) => {
   switch (expansion) {
     case Expansion.TheBurningCrusade:
-      return '/img/headertbc.jpg';
+      return publicAsset('img/headertbc.jpg');
     default:
-      return '/img/header.jpg';
+      return publicAsset('img/header.jpg');
   }
 };
 

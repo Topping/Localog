@@ -3,6 +3,7 @@ import prettyEncodeURI from 'common/prettyEncodeURI';
 import Combatant from 'parser/core/Combatant';
 import Report from 'parser/core/Report';
 import CharacterProfile from 'parser/core/CharacterProfile';
+import { publicAsset } from 'config/staticHosting';
 
 export function makePlainUrl(
   reportCode?: string,
@@ -94,7 +95,7 @@ export function makeArmoryUrl(player: Combatant) {
 
 export function makeThumbnailUrl(characterInfo: CharacterProfile, classic: boolean) {
   if (!characterInfo?.thumbnail) {
-    return '/img/fallback-character.jpg';
+    return publicAsset('img/fallback-character.jpg');
   }
   if (characterInfo.thumbnail?.startsWith('https')) {
     return characterInfo.thumbnail;

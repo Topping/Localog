@@ -45,6 +45,7 @@ import SpellLink from 'interface/SpellLink';
 
 // prettier-ignore
 export default [
+  change(date(2026, 8, 23), 'Use best-effort storage for local reports and fix images when hosted below a URL path.', Topping),
   change(date(2026, 8, 23), 'Add fork maintenance tooling and deploy GitHub Pages from the maintained fork branch.', Topping),
   change(date(2026, 8, 23), 'Add guided local imports for target-dummy combat logs.', Topping),
   change(date(2026, 8, 23), 'Rebrand the local-first analyzer as Localog.', Topping),

@@ -5,6 +5,7 @@ import { captureException } from 'common/errorLogger';
 import fetchWcl, { CharacterNotFoundError, UnknownApiError, WclApiError } from 'common/fetchWclApi';
 import { makeCharacterApiUrl } from 'common/makeApiUrl';
 import retryingPromise from 'common/retryingPromise';
+import { publicAsset } from 'config/staticHosting';
 import RETAIL_DIFFICULTIES, {
   CLASSIC_DIFFICULTIES,
   getLabel as getDifficultyLabel,
@@ -50,7 +51,7 @@ const ORDER_BY = {
 const DEFAULT_RETAIL_ZONE = VENOMOUS_ABYSS_ZONE.id;
 const DEFAULT_CLASSIC_ZONE = 1046; // Throne of Thunder
 const BOSS_DEFAULT_ALL_BOSSES = 0;
-const FALLBACK_PICTURE = '/img/fallback-character.jpg';
+const FALLBACK_PICTURE = publicAsset('img/fallback-character.jpg');
 const ERRORS = {
   CHARACTER_NOT_FOUND: defineMessage({
     id: 'interface.characterParses.characterParses.errors.characterNotFound',
@@ -167,7 +168,9 @@ class CharacterParses extends Component<CharacterParsesProps, CharacterParsesSta
   }
 
   iconPath(specName: string) {
-    return `/specs/${this.state.class.replace(' ', '')}-${specName.replace(' ', '')}.jpg`;
+    return publicAsset(
+      `specs/${this.state.class.replace(' ', '')}-${specName.replace(' ', '')}.jpg`,
+    );
   }
 
   appendHistory(player: Player) {

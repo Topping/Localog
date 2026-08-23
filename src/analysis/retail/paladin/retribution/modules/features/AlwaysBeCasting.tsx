@@ -1,6 +1,7 @@
 import CoreAlwaysBeCasting from 'parser/shared/modules/AlwaysBeCasting';
 import { STATISTIC_ORDER } from 'parser/ui/StatisticBox';
 import { ThresholdStyle } from 'parser/core/ParseResults';
+import { publicAsset } from 'config/staticHosting';
 
 class AlwaysBeCasting extends CoreAlwaysBeCasting {
   get suggestionThresholds() {
@@ -16,8 +17,8 @@ class AlwaysBeCasting extends CoreAlwaysBeCasting {
   }
 
   static icons = {
-    activeTime: '/img/wheelchair.png',
-    downtime: '/img/afk.png',
+    activeTime: publicAsset('img/wheelchair.png'),
+    downtime: publicAsset('img/afk.png'),
   };
   position = STATISTIC_ORDER.CORE(1);
 }

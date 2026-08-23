@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ComponentPropsWithoutRef } from 'react';
 
+import { publicAsset } from 'config/staticHosting';
 import BAD_ICONS, { ICON_RENAME } from './BAD_ICONS';
 
 export interface IconProps extends HTMLAttributes<HTMLImageElement> {
@@ -32,7 +33,7 @@ export function iconUrl(icon: string): string {
 
   let baseURL = `https://assets.rpglogs.com/img/warcraft/${folder}`;
   if (BAD_ICONS.includes(icon)) {
-    baseURL = `/img/Icons`;
+    baseURL = publicAsset('img/Icons');
   }
 
   return `${baseURL}/${icon}.jpg`;
