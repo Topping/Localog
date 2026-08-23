@@ -33,17 +33,19 @@ Slash commands:
 - `/localog snapshot` opens and selects the raw protocol v1 snapshot after the session reaches **READY**.
 - `/localog copy` opens and selects sanitized evidence (`evidence` is an alias).
 
-## CA-02 test build
+## CA-02 evidence status
 
-CA-02 needs Retail verification before it is complete. Test a normal attempt with both self-cast and externally sourced helpful auras if practical:
+**CA-02 decision: verified.** Retail `12.1.0.69404` testing produced a complete, deterministic protocol v1 block from a target-dummy capture. The normal capture and serialization path meets the CA-02 acceptance criteria, so combined SimulationCraft export work may proceed in CA-03.
 
-1. Reach **READY**, click **Copy snapshot block**, and confirm it begins and ends with the exact protocol markers.
-2. Confirm scalar fields appear once and in documented order, followed only by zero or more aura lines.
-3. Confirm aura lines are numerically sorted by spell ID; equal spell IDs must sort by source GUID and must not repeat the same `(spell ID, source GUID)` pair.
-4. Confirm missing/zero application counts appear as `1`, all counts are in `1..255`, and unavailable sources appear as `-`.
-5. Use **Copy evidence** and confirm `protocol_serialized=true`, `capture_status=complete` or `partial`, and sensible aura/byte/skip counts.
+| Observation                     | Status   | Sanitized evidence                                                                                                   |
+| ------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| Envelope and scalar field order | Verified | Exact start/end markers; schema `1`; every required scalar appeared once in protocol order.                          |
+| Capture identity and timing     | Verified | Client `12.1.0.69404`, TOC `120100`; capture time aligned with Combat `Activating` 1.784 seconds after arming.       |
+| Aura normalization and order    | Verified | Five unique records, ascending numeric spell IDs, application count `1`, readable self-source GUIDs, no duplicates.  |
+| Complete snapshot invariants    | Verified | `completeness=complete`, both skipped counters `0`, normal terminator at index `6`, and no inaccessible aura values. |
+| Serializer bounds               | Verified | `protocol_serialized=true`; the complete block was `632` bytes against the 64 KiB limit.                             |
 
-The raw snapshot contains the player GUID, source GUIDs, spell IDs, build metadata, and capture time. Redact those identifiers before sharing it publicly. Combined SimulationCraft export and checksum handling arrive in CA-03.
+The verified pull did not naturally contain duplicate records, unavailable source GUIDs, secret entries, or invalid entries. Their deduplication, unknown-source, partial, and unavailable paths remain fail-closed implementation branches to confirm when suitable Retail cases occur. The raw snapshot contains player/source GUIDs, spell IDs, build metadata, and capture time; redact those identifiers before sharing it publicly. Combined SimulationCraft export and checksum handling arrive in CA-03.
 
 ## CA-01 evidence status
 
