@@ -1,0 +1,12 @@
+## Interface: 120100
+## Title: Localog Companion
+## Notes: Development probe for Localog target-dummy aura capture.
+## Author: Topping
+## Version: 0.1.0
+## Dependencies: Simulationcraft
+
+Core.lua
+Capture.lua
+Protocol.lua
+SimcIntegration.lua
+UI.lua
