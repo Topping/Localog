@@ -18,7 +18,7 @@ const Footer = () => (
         <div className="social-links">
           {/* For some reason the tooltip disappears and reappears when mousing over the svg icons (maybe when the cursor leaves filled areas)*/}
           <Tooltip content="GitHub">
-            <a href="https://github.com/Topping/WoWAnalyzer">
+            <a href="https://github.com/Topping/Localog">
               <GithubLogo />
             </a>
           </Tooltip>

@@ -8,7 +8,7 @@ interface Props extends HTMLAttributes<HTMLAnchorElement> {
 }
 
 const GithubButton = ({ text = 'View source on GitHub', ...others }: Props) => (
-  <a className="btn github" role="button" href="https://github.com/Topping/WoWAnalyzer" {...others}>
+  <a className="btn github" role="button" href="https://github.com/Topping/Localog" {...others}>
     <GitHubIcon /> {text}
   </a>
 );

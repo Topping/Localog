@@ -1,6 +1,6 @@
 # Fork maintenance contract
 
-This document records the behavior that distinguishes `Topping/WoWAnalyzer` from the official
+This document records the behavior that distinguishes `Topping/Localog` from the official
 [`WoWAnalyzer/WoWAnalyzer`](https://github.com/WoWAnalyzer/WoWAnalyzer) repository. It is the
 minimum preservation contract for upstream syncs, not a substitute for inspecting the live Git
 history and diff.
@@ -18,7 +18,7 @@ will request approval when the active Codex permission policy requires one.
 
 ## Git topology
 
-- `origin` is the writable `Topping/WoWAnalyzer` fork.
+- `origin` is the writable `Topping/Localog` fork.
 - `upstream` is the read-only official repository at
   `https://github.com/WoWAnalyzer/WoWAnalyzer.git`.
 - Both repositories currently use `midnight` as their default integration branch.

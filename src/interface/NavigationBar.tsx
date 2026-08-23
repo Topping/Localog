@@ -60,7 +60,7 @@ const NavigationBar = ({ children, ...others }: Props) => {
         <div className="spacer" />
         <Tooltip content="GitHub">
           <div className="menu-item optional">
-            <a href="https://github.com/Topping/WoWAnalyzer">
+            <a href="https://github.com/Topping/Localog">
               <GitHubIcon />
             </a>
           </div>

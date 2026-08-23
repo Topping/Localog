@@ -44,8 +44,12 @@ jobs:
           VITE_SENTRY_DSN: ''
           VITE_ENABLE_GA: false
       - run: pnpm run static:check
+      # Playwright regularly exceeds the GitHub-hosted runner time limit during automatic
+      # deployments. Keep it available for explicit diagnostics without blocking midnight pushes.
       - run: pnpm exec playwright install --with-deps chromium firefox
+        if: github.event_name == 'workflow_dispatch'
       - run: pnpm run e2e:static
+        if: github.event_name == 'workflow_dispatch'
         env:
           CI: true
           VITE_STATIC_HOST: true
