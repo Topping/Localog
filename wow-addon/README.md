@@ -38,7 +38,17 @@ Slash commands:
 
 ## CA-03 test status
 
-**CA-03 decision: awaiting in-game verification.** The stable public-API export and isolated `/simc` post-hook are implemented in `0.4.0`. The addon fails closed if profile generation reports an error, the input checksum does not validate, the terminal checksum is missing or duplicated, a companion block is already present, or the named `/simc` edit box no longer matches the profile passed to its frame method.
+**CA-03 decision: verified.** Retail `12.1.0.69404` testing with SimulationCraft addon `12.1.0-03` confirmed the stable button, `/localog export`, isolated `/simc` post-hook, recalculated checksum envelope, and ordinary SimC consumer compatibility.
+
+| Observation                 | Status   | Sanitized evidence                                                                                                                           |
+| --------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Integration availability    | Verified | Public profile API available; convenience hook installed; neither integration path reported an issue.                                        |
+| Stable combined export      | Verified | Original checksum validated; `5,170`-byte profile plus `632`-byte snapshot produced a `5,802`-byte combined export.                          |
+| Combined envelope           | Verified | Exactly one companion block and one terminal checksum; snapshot immediately preceded the checksum; every inserted line was a comment.        |
+| `/simc` convenience path    | Verified | Post-hook completed with a validated input checksum and the same `5,802`-byte combined size, one companion block, and one terminal checksum. |
+| SimC consumer compatibility | Verified | The combined comment-only profile was accepted through the ordinary SimulationCraft workflow.                                                |
+
+The verified session used a complete five-aura snapshot with no secret or invalid entries and preserved pre-existing combat logging. The incompatibility branches were not forced in-game: they remain fail-closed paths that leave `/simc` unchanged or block stable export with a visible update message.
 
 The stable path and convenience path degrade independently. A missing public API blocks **Copy for Localog** and asks for a SimulationCraft update without blocking aura capture. A missing private UI seam leaves `/simc` untouched while the stable public-API path remains available. The adapter does not replace `/simc`, overwrite `GetSimcProfile`, or modify SimulationCraft saved variables.
 
