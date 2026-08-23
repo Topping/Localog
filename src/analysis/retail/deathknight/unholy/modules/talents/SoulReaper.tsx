@@ -26,7 +26,6 @@ import SpellUsable from '../core/SpellUsable';
 
 const SOUL_REAPER_EXECUTE_THRESHOLD = 0.35;
 const SOUL_REAPER_COOLDOWN_MS = 15_000;
-const SOUL_REAPER_NEXT_DT_BAD_WINDOW_MS = 15_000;
 const ATTRIBUTED_PLAYER_DAMAGE_SPELL_IDS = new Set([
   SPELLS.DREAD_PLAGUE.id,
   SPELLS.VIRULENT_PLAGUE.id,
@@ -289,60 +288,24 @@ class SoulReaper extends ExecuteHelper.withDependencies({
     };
   }
 
-  private getOutsideDarkTransformationAssessment(
-    cast: SoulReaperCastRecord,
-    nextDarkTransformationTimestamp: number | null,
-  ): { assessment: JSX.Element; performance: QualitativePerformance } {
-    const usedWithinNextDarkTransformationWindow =
-      nextDarkTransformationTimestamp !== null &&
-      nextDarkTransformationTimestamp - cast.timestamp <= SOUL_REAPER_NEXT_DT_BAD_WINDOW_MS;
+  private getOutsideDarkTransformationAssessment(cast: SoulReaperCastRecord): {
+    assessment: JSX.Element;
+    performance: QualitativePerformance;
+  } {
     const usedWithPutrefyStacks = cast.putrefyChargesAtCast > 0;
-
-    if (!usedWithPutrefyStacks && !usedWithinNextDarkTransformationWindow) {
-      return {
-        performance: QualitativePerformance.Good,
-        assessment: (
-          <>
-            You used <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> without Putrefy stacks outside{' '}
-            <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />.
-          </>
-        ),
-      };
-    }
-
-    if (usedWithPutrefyStacks && usedWithinNextDarkTransformationWindow) {
-      return {
-        performance: QualitativePerformance.Fail,
-        assessment: (
-          <>
-            You used <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> outside{' '}
-            <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} /> with available{' '}
-            <SpellLink spell={TALENTS.PUTREFY_TALENT} /> stacks and less than 15s until your next{' '}
-            <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />.
-          </>
-        ),
-      };
-    }
-
-    if (usedWithPutrefyStacks) {
-      return {
-        performance: QualitativePerformance.Fail,
-        assessment: (
-          <>
-            You used <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> with stacks from{' '}
-            <SpellLink spell={TALENTS.PUTREFY_TALENT} /> outside{' '}
-            <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />.
-          </>
-        ),
-      };
-    }
-
     return {
-      performance: QualitativePerformance.Fail,
+      performance: QualitativePerformance.Good,
       assessment: (
         <>
-          You used <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> within 15s of your next{' '}
-          <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />.
+          You used <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> on cooldown outside{' '}
+          <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />
+          {usedWithPutrefyStacks && (
+            <>
+              , automatically spending the available <SpellLink spell={TALENTS.PUTREFY_TALENT} />{' '}
+              charges
+            </>
+          )}
+          .
         </>
       ),
     };
@@ -351,7 +314,6 @@ class SoulReaper extends ExecuteHelper.withDependencies({
   private getCastAssessment(
     cast: SoulReaperCastRecord,
     firstCastInDarkTransformationWindows: Set<number>,
-    nextDarkTransformationTimestamp: number | null,
   ): { assessment: JSX.Element; performance: QualitativePerformance } {
     if (cast.darkTransformationWindowId !== null) {
       return this.getDarkTransformationAssessment(
@@ -360,7 +322,7 @@ class SoulReaper extends ExecuteHelper.withDependencies({
       );
     }
 
-    return this.getOutsideDarkTransformationAssessment(cast, nextDarkTransformationTimestamp);
+    return this.getOutsideDarkTransformationAssessment(cast);
   }
 
   private buildCastStats(
@@ -403,11 +365,7 @@ class SoulReaper extends ExecuteHelper.withDependencies({
       );
       nextDarkTransformationIndex = darkTransformationContext.nextDarkTransformationIndex;
 
-      const castAssessment = this.getCastAssessment(
-        cast,
-        firstCastInDarkTransformationWindows,
-        darkTransformationContext.nextDarkTransformationTimestamp,
-      );
+      const castAssessment = this.getCastAssessment(cast, firstCastInDarkTransformationWindows);
       const inDarkTransformation = cast.darkTransformationWindowId !== null;
       const darkTransformationCooldownRemaining = inDarkTransformation
         ? 'Active'
@@ -468,8 +426,9 @@ class SoulReaper extends ExecuteHelper.withDependencies({
           <strong>
             <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} />
           </strong>{' '}
-          should be prioritized during <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} /> and
-          managed carefully outside of it.
+          should be used on cooldown. <SpellLink spell={TALENTS.DARK_TRANSFORMATION_TALENT} />{' '}
+          resets its cooldown and lets it be used at any target health, so always take that
+          additional cast during the burst window.
         </p>
         <p>
           During each <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} /> window, always spend the
@@ -478,10 +437,11 @@ class SoulReaper extends ExecuteHelper.withDependencies({
           active.
         </p>
         <p>
-          Outside <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />, use{' '}
-          <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> only when you do not have stacks from{' '}
-          <SpellLink spell={TALENTS.PUTREFY_TALENT} /> available and you are not within 15 seconds
-          of your next <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />.
+          Outside <SpellLink spell={SPELLS.DARK_TRANSFORMATION_BUFF} />, continue using{' '}
+          <SpellLink spell={TALENTS.SOUL_REAPER_TALENT} /> whenever it is available. Casting it
+          before <SpellLink spell={TALENTS.DARK_TRANSFORMATION_TALENT} /> comes ready is valuable
+          because the reset provides another cast, and available{' '}
+          <SpellLink spell={TALENTS.PUTREFY_TALENT} /> charges are fired automatically.
         </p>
       </>
     );

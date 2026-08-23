@@ -7,11 +7,13 @@ import TALENTS from 'common/TALENTS/deathknight';
 import PreparationSection from 'interface/guide/components/Preparation/PreparationSection';
 import Cooldowns from './guide/CooldownSection';
 import { FoundationDowntimeSection } from 'interface/guide/foundation/FoundationDowntimeSection';
+import { AplSection } from './apl/AplCheck';
 
 export default function Guide({ modules, info }: GuideProps<typeof CombatLogParser>) {
   return (
     <>
       <IntroSection />
+      <AplSection />
 
       <Section title="Core Spells and Buffs">
         {modules.plagueEfficiency.guideSubsection}
