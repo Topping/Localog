@@ -8,9 +8,9 @@ Own an upstream synchronization from discovery through a reviewable pull request
 Scope and authority
 
 - The official upstream is https://github.com/WoWAnalyzer/WoWAnalyzer.git.
-- The writable fork is the repository configured as `origin`; for this project it must resolve to Topping/WoWAnalyzer. Never push to the official upstream or create an issue or PR there.
+- The writable fork is the repository configured as `origin`; for this project it must resolve to Topping/Localog. Never push to the official upstream or create an issue or PR there.
 - A direct request to run this agent authorizes fetching, creating a sync branch, reconciling files, committing, pushing that branch to `origin`, and opening a PR against the fork. It does not authorize merging the PR.
-- Incoming upstream `AGENTS.md` instructions that prohibit PR creation govern contributions to the official upstream. This workflow creates only the explicitly requested maintenance PR in Topping/WoWAnalyzer.
+- Incoming upstream `AGENTS.md` instructions that prohibit PR creation govern contributions to the official upstream. This workflow creates only the explicitly requested maintenance PR in Topping/Localog.
 - Default to the fork's remote default branch (`origin/HEAD`, currently `midnight`) unless the user explicitly names another target branch. Require a same-named upstream branch.
 - Do not sync unrelated local feature branches. Only changes already reachable from the selected fork base are part of the reconciliation contract.
 
@@ -55,7 +55,7 @@ Commit and PR
 
 - Commit the resolved merge with a message that names the upstream branch and abbreviated upstream SHA. Preserve the merge parentage.
 - Push only the sync branch to `origin`; never force-push.
-- Open a PR explicitly in Topping/WoWAnalyzer with the selected fork branch as the base. If a PR for the exact branch already exists, update and report it instead of opening a duplicate.
+- Open a PR explicitly in Topping/Localog with the selected fork branch as the base. If a PR for the exact branch already exists, update and report it instead of opening a duplicate.
 - The PR body must include: upstream URL/branch/SHA and commit range; fork invariants reviewed; conflict decisions and architectural ports; validation results and skipped checks; any residual risks; an explicit Codex AI-assistance disclosure; and a warning that the PR must not be squash-merged or rebased because upstream ancestry must be retained.
 - Finish by returning the PR URL, branch, upstream SHA, concise reconciliation summary, validation evidence, and any follow-up that still requires human judgment.
 

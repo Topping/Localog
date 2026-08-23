@@ -73,4 +73,4 @@ COMMANDS
 /localog export   Open a fresh combined export when ready
 /localog copy     Open a fresh combined export when ready
 
-Source and license: https://github.com/Topping/WoWAnalyzer
+Source and license: https://github.com/Topping/Localog
