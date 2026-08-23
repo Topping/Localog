@@ -3,6 +3,7 @@ import type {
   TargetDummyActorDiscoveryResult,
   TargetDummyActorKind,
   TargetDummyConfidenceReason,
+  TargetDummyCombatLogMetadata,
   TargetDummyOwnedEntity,
   TargetDummyOwnershipEvidence,
   TargetDummyPlayerCandidate,
@@ -55,6 +56,7 @@ interface MutableSessionWindow {
   qualifyingActionCount: number;
   playerInitiatedActionCount: number;
   boundaryGeneration: number;
+  logMetadata?: TargetDummyCombatLogMetadata;
 }
 
 interface ResolvedSessionDiscoveryOptions {
@@ -202,6 +204,7 @@ export class TargetDummyActorDiscovery {
   #boundaryGeneration = 0;
   #combatLogVersionCount = 0;
   #insideEncounter = false;
+  #currentLogMetadata: TargetDummyCombatLogMetadata | undefined;
 
   constructor(options: TargetDummySessionDiscoveryOptions = {}) {
     this.#options = resolveOptions(options);
@@ -232,6 +235,7 @@ export class TargetDummyActorDiscovery {
         this.#startBoundary(timestamp);
       }
       this.#combatLogVersionCount += 1;
+      this.#currentLogMetadata = parseCombatLogMetadata(fields, bareVersion);
       return;
     }
     if (event === 'ENCOUNTER_START') {
@@ -487,6 +491,7 @@ export class TargetDummyActorDiscovery {
         qualifyingActionCount: 0,
         playerInitiatedActionCount: 0,
         boundaryGeneration: this.#boundaryGeneration,
+        logMetadata: this.#currentLogMetadata,
       };
       state.openWindows.set(playerGuid, window);
     }
@@ -602,6 +607,7 @@ export class TargetDummyActorDiscovery {
           reasons,
           qualifyingActionCount: window.qualifyingActionCount,
           playerInitiatedActionCount: window.playerInitiatedActionCount,
+          ...(window.logMetadata === undefined ? {} : { logMetadata: window.logMetadata }),
         } satisfies TargetDummySessionCandidate;
       });
   }
@@ -638,4 +644,47 @@ export class TargetDummyActorDiscovery {
       targetObservationCount: Number(role === 'target'),
     });
   }
+}
+
+function parseMetadataInteger(value: string | undefined): number | undefined {
+  if (!value || !/^(?:0|[1-9][0-9]*)$/u.test(value)) return undefined;
+  const parsed = Number(value);
+  return Number.isSafeInteger(parsed) && parsed <= 0x7fffffff ? parsed : undefined;
+}
+
+function parseCombatLogMetadata(
+  fields: readonly string[],
+  bareVersion: boolean,
+): TargetDummyCombatLogMetadata {
+  const eventIndex = bareVersion ? 0 : 1;
+  const values = new Map<string, string>();
+  const conflictingKeys = new Set<string>();
+  for (let index = eventIndex + 2; index + 1 < fields.length; index += 2) {
+    const key = fields[index] ?? '';
+    const value = fields[index + 1] ?? '';
+    if (conflictingKeys.has(key)) continue;
+    const previous = values.get(key);
+    if (previous !== undefined && previous !== value) {
+      values.delete(key);
+      conflictingKeys.add(key);
+    } else {
+      values.set(key, value);
+    }
+  }
+  const logVersion = parseMetadataInteger(fields[eventIndex + 1]);
+  const advanced = parseMetadataInteger(values.get('ADVANCED_LOG_ENABLED'));
+  const clientBuild = parseMetadataInteger(
+    values.get('BUILD_NUMBER') ?? values.get('CLIENT_BUILD') ?? values.get('BUILD'),
+  );
+  const clientToc = parseMetadataInteger(values.get('TOC_VERSION') ?? values.get('TOC'));
+  const projectId = parseMetadataInteger(values.get('PROJECT_ID'));
+  const wowVersion = values.get('BUILD_VERSION');
+  return {
+    ...(logVersion === undefined ? {} : { logVersion }),
+    ...(advanced === undefined ? {} : { advancedLogging: advanced === 1 }),
+    ...(wowVersion === undefined ? {} : { wowVersion }),
+    ...(clientBuild === undefined ? {} : { clientBuild }),
+    ...(clientToc === undefined ? {} : { clientToc }),
+    ...(projectId === undefined ? {} : { projectId }),
+  };
 }

@@ -63,8 +63,8 @@ export default function TargetDummyImportInput({
       <div className={styles.Intro} role="status">
         <strong>Target-dummy activity found</strong>
         <span>
-          Choose the character and attempt, then add that character's current SimulationCraft
-          profile.
+          Choose the character and attempt, then paste that character's Localog Companion export or
+          current SimulationCraft profile.
         </span>
       </div>
 
@@ -135,8 +135,8 @@ export default function TargetDummyImportInput({
           SimulationCraft addon export
         </label>
         <span className={styles.FieldHelp}>
-          In World of Warcraft, run <code>/simc</code> on the selected character and paste the full
-          output.
+          Prefer <strong>Copy for Localog</strong> in the companion panel. A plain{' '}
+          <code>/simc</code> export remains supported without a pull-time aura snapshot.
         </span>
         <textarea
           id="target-dummy-simc"
@@ -178,8 +178,9 @@ export default function TargetDummyImportInput({
       )}
 
       <p className={styles.FinePrint}>
-        Identity, specialization, talents, and equipment come from this profile. Live ratings and
-        pull-time auras are unavailable and will use explicit defaults.
+        Identity, specialization, talents, and equipment come from this profile. A matching
+        companion block also binds the selected player, client build, capture time, and advanced-log
+        marker before the report is created.
       </p>
       <details className={styles.TechnicalDetails}>
         <summary>Technical discovery details</summary>

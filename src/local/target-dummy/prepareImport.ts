@@ -13,6 +13,7 @@ import {
   readCombatLogLines,
 } from '../LocalCombatLogParser';
 import type { PreparedTargetDummyInput } from '../localCombatLogProtocol';
+import type { CompanionSnapshot } from './companion/contracts';
 import type { TargetDummyActorDiscoveryResult } from './contracts';
 
 const TARGET_DUMMY_BOSS_ID = -1;
@@ -30,6 +31,7 @@ export interface PreparedTargetDummyImport {
     readonly end: number;
   };
   readonly diagnostics: LocalDiagnostic[];
+  readonly companionSnapshot?: CompanionSnapshot;
 }
 
 export interface TargetDummyImportPlan extends PreparedTargetDummyImport {
@@ -111,6 +113,9 @@ export function prepareTargetDummyImport(
       end: prepared.session.end,
     },
     diagnostics,
+    ...(prepared.companionSnapshot === undefined
+      ? {}
+      : { companionSnapshot: prepared.companionSnapshot }),
     report: normalization.report(reportId),
     actors,
     normalization,

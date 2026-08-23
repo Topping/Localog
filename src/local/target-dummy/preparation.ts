@@ -1,15 +1,22 @@
 import type { LocalActor } from '../LocalCombatLogParser';
 import type {
   PreparedTargetDummyInput,
+  TargetDummyPreparationFailure,
   TargetDummyPreparationInput,
 } from '../localCombatLogProtocol';
 import { buildCombatantInfoEvent } from './combatant-info/builder';
 import { INSTALLED_TALENT_SNAPSHOTS } from './combatant-info/data/installed';
 import { decodeTalentExport } from './combatant-info/talents';
 import type { TargetDummyBuildBinding } from './combatant-info/validator';
+import { parseCompanionSnapshot } from './companion/parser';
+import { validateCompanionSnapshotBinding } from './companion/validator';
 import type { TargetDummyActorDiscoveryResult } from './contracts';
 import { parseSimcAddonProfile } from './simc/parser';
 import type { SimcProfileFailure, SimcResult } from './simc/contracts';
+
+type TargetDummyPreparationResult =
+  | { readonly ok: true; readonly value: PreparedTargetDummyInput }
+  | { readonly ok: false; readonly error: TargetDummyPreparationFailure };
 
 function malformedSelection(message: string): SimcResult<never> {
   return {
@@ -28,7 +35,7 @@ export function prepareTargetDummyInput(
   localActors: readonly LocalActor[],
   build: TargetDummyBuildBinding,
   input: TargetDummyPreparationInput,
-): SimcResult<PreparedTargetDummyInput> {
+): TargetDummyPreparationResult {
   const player = discovery.players.find((candidate) => candidate.guid === input.playerGuid);
   const session = discovery.sessions.find((candidate) => candidate.id === input.sessionId);
   const localActor = localActors.find((actor) => actor.guid === input.playerGuid);
@@ -38,9 +45,21 @@ export function prepareTargetDummyInput(
     );
   }
 
+  const companion = parseCompanionSnapshot(input.simcProfile);
+  if (!companion.ok) {
+    return companion;
+  }
   const profile = parseSimcAddonProfile(input.simcProfile);
   if (!profile.ok) {
     return profile;
+  }
+  const companionBinding = validateCompanionSnapshotBinding(companion.value, {
+    playerGuid: player.guid,
+    session,
+    profile: profile.value,
+  });
+  if (!companionBinding.ok) {
+    return companionBinding;
   }
   const talents = decodeTalentExport(profile.value.talentExport, INSTALLED_TALENT_SNAPSHOTS, {
     wowVersion: profile.value.provenance.wowVersion,
@@ -65,6 +84,9 @@ export function prepareTargetDummyInput(
       playerGuid: player.guid,
       session,
       combatantInfo: combatantInfo.value,
+      ...(companionBinding.value === undefined
+        ? {}
+        : { companionSnapshot: companionBinding.value }),
     },
   };
 }

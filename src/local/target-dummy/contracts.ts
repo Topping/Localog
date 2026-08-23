@@ -77,6 +77,17 @@ export interface TargetDummySessionCandidate {
   readonly reasons: readonly TargetDummyConfidenceReason[];
   readonly qualifyingActionCount: number;
   readonly playerInitiatedActionCount: number;
+  /** COMBAT_LOG_VERSION metadata active for this standalone log segment. */
+  readonly logMetadata?: TargetDummyCombatLogMetadata;
+}
+
+export interface TargetDummyCombatLogMetadata {
+  readonly logVersion?: number;
+  readonly advancedLogging?: boolean;
+  readonly wowVersion?: string;
+  readonly clientBuild?: number;
+  readonly clientToc?: number;
+  readonly projectId?: number;
 }
 
 export interface TargetDummySessionDiscoveryOptions {

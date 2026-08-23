@@ -8,7 +8,13 @@ import type {
   TargetDummySessionCandidate,
 } from './target-dummy/contracts';
 import type { BuiltCombatantInfo } from './target-dummy/combatant-info/builder';
+import type {
+  CompanionSnapshot,
+  CompanionSnapshotFailure,
+} from './target-dummy/companion/contracts';
 import type { SimcProfileFailure } from './target-dummy/simc/contracts';
+
+export type TargetDummyPreparationFailure = SimcProfileFailure | CompanionSnapshotFailure;
 
 export interface TargetDummyPreparationInput {
   readonly playerGuid: string;
@@ -20,13 +26,14 @@ export interface TargetDummyPreparationInput {
 export interface TargetDummyInputRequest {
   readonly discovery: TargetDummyActorDiscoveryResult;
   readonly diagnostics: readonly LocalDiagnostic[];
-  readonly validationError?: SimcProfileFailure;
+  readonly validationError?: TargetDummyPreparationFailure;
 }
 
 export interface PreparedTargetDummyInput {
   readonly playerGuid: string;
   readonly session: TargetDummySessionCandidate;
   readonly combatantInfo: BuiltCombatantInfo;
+  readonly companionSnapshot?: CompanionSnapshot;
 }
 
 export type LocalCombatLogWorkerInput =
@@ -62,7 +69,9 @@ export type LocalCombatLogWorkerOutput =
   | (OperationMessage & {
       readonly type: 'target-dummy-input-error';
       readonly requestId: number;
-      readonly request: TargetDummyInputRequest & { readonly validationError: SimcProfileFailure };
+      readonly request: TargetDummyInputRequest & {
+        readonly validationError: TargetDummyPreparationFailure;
+      };
     })
   | (OperationMessage & {
       readonly type: 'target-dummy-prepared';
